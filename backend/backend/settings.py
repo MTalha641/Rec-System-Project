@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'backend',
     'items',
     'rentals',
-    'users'
+    'users',
+    'corsheaders',
+
     
     
 
@@ -57,6 +59,8 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -128,6 +132,28 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOWED_ORIGINS = [
+    # 'http:// 192.168.184.1.9000',
+    #  'http:// 192.168.133.1.19006',
+     'http:// 192.168.53.1.19006',
+
+
+    
+        # Expo Go running on your device
+    'http://localhost:8000',
+]
+
+ALLOWED_HOSTS = [
+    # '192.168.184.1',
+    #  '192.168.133.1',
+     '192.168.53.1',
+    
+]
+
+
 
 
 # Static files (CSS, JavaScript, Images)
