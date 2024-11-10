@@ -1,12 +1,12 @@
 # users/serializers.py
 from rest_framework import serializers
 from .models import User
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'password']
+        fields = [ 'username', 'email', 'password']
         extra_kwargs = {
             'password': {'write_only': True}  # Ensure password is write-only
         }
@@ -18,5 +18,20 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    username = serializers.CharField()  # Or use 'email' if you prefer
     password = serializers.CharField()
+
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+
+        try:
+            user = User.objects.get(username=username)  # Change to .get(email=email) if using email for login
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found.")
+
+        if not user.check_password(password):
+            raise serializers.ValidationError("Incorrect password.")
+
+        attrs['user'] = user
+        return attrs
