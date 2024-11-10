@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, Image, Alert } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react"; // Import useEffect
 import { SafeAreaView } from "react-native-safe-area-context";
 import logo from "../../assets/images/RLogo.png";
 import FormField from "../../components/FormField";
@@ -8,31 +8,33 @@ import { Link, router } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from '@env';
-
-
+import { AuthContext } from "../context/AuthContext"; // Import AuthContext
 
 const SignIn = () => {
-  const [form, setform] = useState({
+  const [form, setForm] = useState({
     email: "",
     password: "",
   });
 
-  const [isSubmitting, setisSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login } = useContext(AuthContext); // Access the login function from AuthContext
 
-  // Store token in AsyncStorage
-  const storeToken = async (token) => {
-    try {
-      await AsyncStorage.setItem("accessToken", token);
-      console.log("Token stored successfully");
-    } catch (error) {
-      console.log("Failed to store token", error);
+  // useEffect to check if user is already logged in
+  useEffect(() => {
+    const checkIfLoggedIn = async () => {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (token) {
+        // Redirect to home page if token exists
+        Alert.alert("You are already logged in!")
     }
-  };
+    };
 
-  
+    checkIfLoggedIn(); // Run this on component mount
+  }, []);
+
   const submit = async () => {
-    console.log("Submitting login request"); 
-    setisSubmitting(true);
+    console.log("Submitting login request");
+    setIsSubmitting(true);
     try {
       // Make API request to login
       const response = await axios.post(`${API_URL}/api/users/login/`, {
@@ -40,15 +42,13 @@ const SignIn = () => {
         password: form.password,
       });
 
-
       console.log("Response received:", response.data);
 
- 
       if (response.status === 200) {
         const { access } = response.data; // Extract access token
 
-        // Store access token in AsyncStorage
-        await storeToken(access);
+        // Use login function from context to store token and authenticate user
+        await login(access);
 
         // Show success alert
         Alert.alert("Success", "Login successful!");
@@ -67,9 +67,10 @@ const SignIn = () => {
         Alert.alert("Error", "Network error. Please try again.");
       }
     } finally {
-      setisSubmitting(false);
+      setIsSubmitting(false);
     }
   };
+  
 
   return (
     <SafeAreaView className="bg-primary h-full">
@@ -86,7 +87,7 @@ const SignIn = () => {
             title="Email"
             value={form.email}
             handleChangeText={(e) =>
-              setform({
+              setForm({
                 ...form,
                 email: e,
               })
@@ -99,7 +100,7 @@ const SignIn = () => {
             title="Password"
             value={form.password}
             handleChangeText={(e) =>
-              setform({
+              setForm({
                 ...form,
                 password: e,
               })

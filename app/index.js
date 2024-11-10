@@ -5,10 +5,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { images } from "../constants";
 import logo from "../assets/images/RLogo.png";
 
+
 import CustomButton from "../components/CustomButton.js"
 
 export default function App() {
   return (
+   
     <SafeAreaView className="bg-primary h-full">
       <ScrollView contentContainerStyle={{ height: "100%" }}>
         <View className="w-full items-center min-h-[85vh] ">
@@ -49,5 +51,6 @@ export default function App() {
       style="light"
       />
     </SafeAreaView>
+
   );
 }

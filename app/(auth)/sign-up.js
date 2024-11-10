@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, Image, Alert } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import logo from "../../assets/images/RLogo.png";
 import FormField from "../../components/FormField";
@@ -8,9 +8,10 @@ import { Link, router } from "expo-router";
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import { API_URL } from '@env';
-
+import { AuthContext } from "../context/AuthContext"; // Import AuthContext
 
 const SignUp = () => {
+  const { login } = useContext(AuthContext); // Get login function from context
   const [form, setform] = useState({
     username: "",
     email: "",
@@ -18,6 +19,20 @@ const SignUp = () => {
   });
 
   const [isSubmitting, setisSubmitting] = useState(false);
+
+  // Check if the user is already logged in by checking the token
+  useEffect(() => {
+    const checkUserLoggedIn = async () => {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (token) {
+        // If token exists, navigate to home or another screen
+        Alert.alert("You are already logged in!");
+        router.push("/home"); // Redirect to home if already logged in
+      }
+    };
+
+    checkUserLoggedIn(); // Call the function when the component mounts
+  }, []); // Only run on the initial render
 
   // Sign-up API integration with JWT handling
   const submit = async () => {
@@ -32,22 +47,22 @@ const SignUp = () => {
       console.log('API response:', response.data); 
 
       if (response.status === 201) {
-      
         const token = response.data.token || response.data.access || null;
 
         if (token) {
           // Store the token in AsyncStorage
-          await AsyncStorage.setItem('token', token);
-          console.log("inside async storage");
+          await AsyncStorage.setItem('accessToken', token);
+          console.log("Token stored successfully");
+
+          // Call the login function from context
+          login(token);
 
           Alert.alert("Success", "Sign-up successful!");
-          router.push("/sign-in"); 
+          router.push("/home"); 
         } else {
-       
           Alert.alert("Error", "Token not received.");
         }
       } else {
-      
         Alert.alert("Error", "Something went wrong. Please try again.");
       }
     } catch (error) {

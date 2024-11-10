@@ -3,20 +3,20 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
 from .serializers import UserSerializer, LoginSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 
-
-# SignUp view that generates JWT tokens upon successful registration
 class SignUpView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
-        # Create user using the serializer
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Generate JWT tokens for the user
+     
         refresh = RefreshToken.for_user(user)
 
         # Return user data and tokens
@@ -29,18 +29,18 @@ class SignUpView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED)
 
 
-# Login view that verifies credentials and returns JWT tokens
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
-        password = request.data.get('password')
+        email = request.data.get('email')  
+        password = request.data.get('password')  
 
         try:
-            # Retrieve the user by email
-            user = User.objects.get(email=email)
-            # Check if the provided password is correct
+          
+            user = User.objects.get(email=email) 
+           
             if user.check_password(password):
                 # Generate JWT tokens
                 refresh = RefreshToken.for_user(user)
@@ -60,3 +60,11 @@ class LoginView(generics.GenericAPIView):
             return Response({
                 "error": "Invalid credentials"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+# Getting user details
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  # Ensure the user is authenticated
+def get_user_details(request):
+    user = request.user  # Get the currently logged-in user
+    serializer = UserSerializer(user)  # Serialize the user data
+    return Response(serializer.data)  # Return the serialized user data
