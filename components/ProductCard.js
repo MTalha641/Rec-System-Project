@@ -1,8 +1,26 @@
 import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { useNavigation, useRoute } from "@react-navigation/native"; // Import navigation hook
+import { useRouter } from "expo-router";
+
+
+import ProductDetails from "./ProductDetails";
 
 const ProductCard = ({ product }) => {
+
+  const router = useRouter(); // Initialize router
+
+  const handlePress = () => {
+    // Navigate to ProductDetails and pass product data as query parameters
+    router.push({
+      pathname: "/ProductDetails",
+      params: { product },
+    });
+  };
+   
+  
+
   if (!product) {
     return (
       <Text className="text-center font-bold text-2xl pt-12">
@@ -13,24 +31,24 @@ const ProductCard = ({ product }) => {
 
   return (
     <View
-      className="bg-white rounded-2xl shadow-lg my-1 bg-black-100"
+      className="bg-white rounded-2xl shadow-lg my-1"
       style={{
         borderRadius: 10,
         marginBottom: 2,
-        width: '100%', // Consistent width for each card in 2-column layout
-        height: 200, // Fixed height for each card
+        width: '100%',
+        height: 200,
       }}
     >
       {/* Product Image */}
-      <Pressable onPress={() => alert(`Viewing details for ${product.title}`)}>
+      <Pressable onPress={handlePress}>
         <Image
-          source={product.imageids[0]}  // Directly use the local image reference
+          source={product.imageids[0]}
           className="w-full"
           resizeMode="cover"
           style={{
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
-            height: 120, // Fixed height for the image
+            height: 120,
           }}
         />
         <View className="px-4 pt-1">
