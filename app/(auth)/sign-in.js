@@ -25,8 +25,9 @@ const SignIn = () => {
       const token = await AsyncStorage.getItem("accessToken");
       if (token) {
         // Redirect to home page if token exists
-        Alert.alert("You are already logged in!")
-    }
+        Alert.alert("You are already logged in!");
+        router.push("/home"); // Navigate to home page
+      }
     };
 
     checkIfLoggedIn(); // Run this on component mount
@@ -45,10 +46,8 @@ const SignIn = () => {
       console.log("Response received:", response.data);
 
       if (response.status === 200) {
-        const { access } = response.data; // Extract access token
-
-        // Use login function from context to store token and authenticate user
-        await login(access);
+        // Use login function from AuthContext and pass the full response data
+        await login(response.data); // Pass entire response.data which contains access and refresh tokens
 
         // Show success alert
         Alert.alert("Success", "Login successful!");
@@ -56,7 +55,6 @@ const SignIn = () => {
         // Navigate to home page
         router.push("/home");
       } else {
-        // Handle other status codes
         Alert.alert("Error", "Invalid credentials. Please try again.");
       }
     } catch (error) {

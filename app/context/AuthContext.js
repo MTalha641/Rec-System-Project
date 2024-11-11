@@ -26,6 +26,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const fetchUserDetails = async () => {
+    if (!token) {
+      console.warn("No access token found, unable to fetch user details.");
+      return;
+    }
+
     try {
       const response = await axios.get(`${API_URL}/api/users/getuserdetails/`, {
         headers: {
@@ -43,12 +48,18 @@ export const AuthProvider = ({ children }) => {
         // If token expired, try refreshing the token
         await refreshAccessToken();
       } else {
-        console.error('Error fetching user details:', error);
+        console.error('Error fetching user details:', error.response?.data || error.message);
       }
     }
   };
 
   const refreshAccessToken = async () => {
+    if (!refreshToken) {
+      console.warn('No refresh token available. Logging out.');
+      logout();
+      return;
+    }
+
     try {
       const response = await axios.post(`${API_URL}/api/users/token/refresh/`, {
         refresh: refreshToken,
@@ -65,20 +76,23 @@ export const AuthProvider = ({ children }) => {
       // Retry fetching user details after refreshing token
       await fetchUserDetails();
     } catch (error) {
-      console.error('Failed to refresh token.', error);
+      console.error('Failed to refresh token:', error.response?.data || error.message);
       logout();
     }
   };
 
-  const login = async (newToken, newRefreshToken) => {
+  const login = async (responseData) => {
     try {
+      const newToken = responseData.access;  // Extract access token from response data
+      const newRefreshToken = responseData.refresh;  // Extract refresh token from response data
+
       if (newToken) {
         await AsyncStorage.setItem('accessToken', newToken);
         setToken(newToken);
       } else {
         console.warn('Attempted to store an undefined access token');
       }
-  
+
       if (newRefreshToken) {
         await AsyncStorage.setItem('refreshToken', newRefreshToken);
         setRefreshToken(newRefreshToken);

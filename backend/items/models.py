@@ -16,7 +16,7 @@ class Item(models.Model):
     # location = models.CharField(max_length=255)
     price_per_day = models.DecimalField(max_digits=10, decimal_places=2)
     availability = models.BooleanField(default=True)
-    owner = models.ForeignKey(User, related_name='items', on_delete=models.CASCADE)
+    # owner = models.ForeignKey(User, related_name='items', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='items/')
 
     def __str__(self):
