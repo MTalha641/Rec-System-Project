@@ -8,11 +8,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [ 'username', 'email', 'password']
         extra_kwargs = {
-            'password': {'write_only': True}  # Ensure password is write-only
+            'password': {'write_only': True} 
         }
 
     def create(self, validated_data):
-        validated_data['password'] = make_password(validated_data['password'])  # Hash the password
+        validated_data['password'] = make_password(validated_data['password'])  
         user = User(**validated_data)
         user.save()
         return user

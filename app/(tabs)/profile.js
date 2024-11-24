@@ -1,52 +1,78 @@
-import React, { useContext } from 'react';
-import { View, Text, Button, Image, StyleSheet } from 'react-native';
+import { 
+  View,
+  Text,
+  SafeAreaView,
+  ImageBackground,
+  TouchableOpacity,
+  Keyboard,
+  TextInput,
+  TouchableWithoutFeedback,
+} from "react-native";
+import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
-// import {  router } from "expo-router";
-const Profile = () => {
-  const { user, logout } = useContext(AuthContext);
+import Furniture from '../../assets/icons/living-room.png';
+import CustomButton from "../../components/CustomButton";
 
-  if (!user) {
-    return <Text>Loading...</Text>;
-  }
+const Profile = () => {
+  const { user, logout } = useContext(AuthContext); // Access the logout function from AuthContext
+  const [name, setName] = useState(user ? user.username : ""); 
+  const [date, setDate] = useState("");
+  const [city, setCity] = useState("");
+
+  // Use a fallback image if user.avatar is undefined or not a valid string URL
+  const avatarSource = user?.avatar && typeof user.avatar === 'string' ? 
+    { uri: user.avatar } : 
+    Furniture;
 
   return (
-    <View style={styles.container}>
-      <Image source={{ uri: user.avatar }} style={styles.avatar} />
-      <Text style={styles.username}>Welcome, {user.username}!</Text>
-      <Text style={styles.email}>Your email,{user.email}</Text>
-      
-      <Button title="Logout" onPress={logout}
-     
-      
-       color="#f05454" />
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView className="bg-primary px-8 flex-1 h-full">
+        <View className="items-center mt-4">
+          <TouchableOpacity activeOpacity={1}>
+            <View className="h-36 w-28 rounded-lg justify-center items-center">
+              <ImageBackground
+                source={avatarSource} // Uses avatarSource with fallback if necessary
+                className="h-24 w-24"
+                imageStyle={{ borderRadius: 15 }}
+              />
+            </View>
+          </TouchableOpacity>
+          <Text className="mt-4 text-lg font-bold text-gray-100">{user?.email || "example@example.com"}</Text>
+        </View>
+
+        <View className="mt-8 flex-row border-b border-gray-300 pb-2 mb-6">
+          <TextInput
+            onChangeText={(text) => setName(text)}
+            value={name}
+            placeholder="Syed Asher Asif"
+            autoCapitalize="none"
+            keyboardType="ascii-capable"
+            autoCorrect={false}
+            className="flex-1 p-0 text-gray-100"
+          />
+        </View>
+
+        <View className="flex-row border-b border-gray-300 pb-2 mb-6 text-gray-100">
+          <TextInput
+            onChangeText={(text) => setDate(text)}
+            value={date}
+            placeholder="Date of Birth"
+            autoCapitalize="none"
+            keyboardType="ascii-capable"
+            autoCorrect={false}
+            className="flex-1 p-0 text-gray-100"
+          />
+        </View>
+
+        {/* Logout Button */}
+        <CustomButton
+          title="Log out"
+          handlePress={logout} // Call the logout function when pressed
+          containerStyles="mt-7"
+        />
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 16,
-  },
-  username: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  email: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 20,
-  },
-});
 
 export default Profile;

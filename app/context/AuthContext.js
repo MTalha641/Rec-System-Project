@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       setRefreshToken(null);
       setUser(null);
-      router.push('/sign-in');
+      router.replace('/sign-in');
     } catch (error) {
       console.error('Failed to remove tokens from storage:', error);
     }
@@ -129,3 +129,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthContext;
