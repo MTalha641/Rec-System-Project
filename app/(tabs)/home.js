@@ -11,7 +11,7 @@ import { products } from '../../components/ProductData';
 import { AuthContext } from "../context/AuthContext"; 
 
 const Home = () => {
-  const { user } = useContext(AuthContext); // Access user from AuthContext
+  const { user } = useContext(AuthContext); 
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
