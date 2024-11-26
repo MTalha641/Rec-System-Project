@@ -144,32 +144,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-CORS_ALLOW_ALL_ORIGINS = True
-
-CORS_ALLOWED_ORIGINS = [
-    # 'http:// 192.168.184.1.9000',
-    #  'http:// 192.168.133.1.19006',
-     'http:// 192.168.18.6.19006',
-     'http:// 192.168.50.1.9000',
-
-
-
-    
-        # Expo Go running on your device
-    'http://localhost:8000',
-]
-
-ALLOWED_HOSTS = [
-    # '192.168.184.1',
-    #  '192.168.133.1',
-     '192.168.18.6',
-     '192.168.50.1',
-     '192.168.18.254'
-    
-]
-
-
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
