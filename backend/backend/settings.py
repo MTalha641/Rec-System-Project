@@ -17,10 +17,16 @@ from dotenv import load_dotenv
 from datetime import timedelta
 
 
+from datetime import timedelta
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
@@ -56,6 +62,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt',
 
+    'bookings',
+    'users',
+    'reviews',
+    'recommendations',
+    'corsheaders',
+    'rest_framework_simplejwt',
+
     
     
 
@@ -63,7 +76,12 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Or AllowAny for open access
+    ],
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # Or AllowAny for open access
@@ -71,7 +89,16 @@ REST_FRAMEWORK = {
 }
 
 
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',             
+    'django.middleware.security.SecurityMiddleware',     
+    'django.contrib.sessions.middleware.SessionMiddleware',  
+    'django.middleware.common.CommonMiddleware',        
+    'django.middleware.csrf.CsrfViewMiddleware',       
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  
+    'django.contrib.messages.middleware.MessageMiddleware',     
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',   
     'corsheaders.middleware.CorsMiddleware',             
     'django.middleware.security.SecurityMiddleware',     
     'django.contrib.sessions.middleware.SessionMiddleware',  
@@ -180,6 +207,20 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+AUTH_USER_MODEL = 'users.User'  
+
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
