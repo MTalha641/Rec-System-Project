@@ -17,10 +17,16 @@ from dotenv import load_dotenv
 from datetime import timedelta
 
 
+from datetime import timedelta
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
@@ -34,7 +40,7 @@ SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['172.16.86.60'] #change everytime a different connection/netwrok is made
 
 
 # Application definition
@@ -56,6 +62,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt',
 
+    'bookings',
+    'users',
+    'reviews',
+    'recommendations',
+    'corsheaders',
+    'rest_framework_simplejwt',
+
     
     
 
@@ -63,7 +76,12 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Or AllowAny for open access
+    ],
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # Or AllowAny for open access
@@ -71,7 +89,16 @@ REST_FRAMEWORK = {
 }
 
 
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',             
+    'django.middleware.security.SecurityMiddleware',     
+    'django.contrib.sessions.middleware.SessionMiddleware',  
+    'django.middleware.common.CommonMiddleware',        
+    'django.middleware.csrf.CsrfViewMiddleware',       
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  
+    'django.contrib.messages.middleware.MessageMiddleware',     
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',   
     'corsheaders.middleware.CorsMiddleware',             
     'django.middleware.security.SecurityMiddleware',     
     'django.contrib.sessions.middleware.SessionMiddleware',  
@@ -164,6 +191,7 @@ ALLOWED_HOSTS = [
     #  '192.168.133.1',
      '192.168.18.6',
      '192.168.50.1',
+     '192.168.18.254'
     
 ]
 
@@ -179,6 +207,20 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+AUTH_USER_MODEL = 'users.User'  
+
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
