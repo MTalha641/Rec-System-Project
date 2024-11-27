@@ -1,22 +1,27 @@
+import React, { useContext, useState } from 'react';
 import { View, Text, FlatList, Image, RefreshControl } from 'react-native';
-import React, { useState, useContext } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import logo from '../../assets/images/RLogo.png';
+import electronic from '../../assets/images/electronic.jpg';
+import furniture from '../../assets/images/furniture.jpg';
+import books from '../../assets/images/books.jpg';
+
 import Search from '../../components/Search';
 import Recommended from '../../components/Recommended';
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
+import ShowCategories from '../../components/ShowCategories';
 import { products } from '../../components/ProductData';
-import { AuthContext } from "../context/AuthContext"; 
+import { AuthContext } from '../context/AuthContext'; // Assuming you have AuthContext set up
 
 const Home = () => {
-  const { user } = useContext(AuthContext); 
+  const { user } = useContext(AuthContext); // Fetch user details from AuthContext
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Recall Ads/Items or any data fetching logic
+    // Add your data fetching or refreshing logic here
     setRefreshing(false);
   };
 
@@ -37,41 +42,55 @@ const Home = () => {
         columnWrapperStyle={{ justifyContent: 'space-between' }} // Ensure equal spacing between columns
         ListHeaderComponent={() => (
           <View className="my-6 px-4 space-y-6">
-            <View className="justify-content items-start flex-row mb-6">
-              <View>
+            {/* Welcome Header */}
+            <View className="flex-row justify-between items-center mb-4">
+              <View style={{ flex: 1 }}>
                 <Text className="font-pmedium text-sm text-gray-100">
-                  Welcome!
+                  Welcome Back!
                 </Text>
-                <Text className="text-2xl font-psemibold text-white">
-                  {user ? user.username : 'User'} {}
+                <Text
+                  className="text-2xl font-psemibold text-white"
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={{ maxWidth: '80%' }} // Restrict username width to avoid overlap
+                >
+                  {user?.username || 'Guest'}
                 </Text>
               </View>
-              <View>
-                <Image
-                  source={logo}
-                  className="w-[400px] h-[60px]"
-                  resizeMode="contain"
-                />
-              </View>
+              <Image
+                source={logo}
+                className="h-[65px]"
+                style={{ width: 100 }} // Fixed width for the logo
+                resizeMode="contain"
+              />
             </View>
 
+            {/* Search Bar */}
             <Search />
 
-            <View className="w-full flex-1 pt-5 pb-4">
+            {/* Categories Section */}
+            <View className="w-full">
+              <Text className="text-gray-100 text-lg font-pregular mb-1">
+                Categories
+              </Text>
+              <ShowCategories />
+            </View>
+
+            {/* Recommended Items Section */}
+            <View className="w-full flex-1 pt-2 pb-4">
               <Text className="text-gray-100 text-lg font-pregular mb-3">
                 Recommended Items
               </Text>
-
               <Recommended posts={products} />
             </View>
+
+            {/* Explore Items Header */}
             <Text className="text-gray-100 text-lg font-pregular mb-1">
               Explore Items
             </Text>
           </View>
         )}
-        ListEmptyComponent={() => (
-          <EmptyState title="No Items Found" />
-        )}
+        ListEmptyComponent={() => <EmptyState title="No Items Found" />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

@@ -31,7 +31,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <View
-      className="bg-white rounded-2xl shadow-lg my-1"
+      className="bg-white rounded-2xl shadow-lg my-1 bg-black-100"
       style={{
         borderRadius: 10,
         marginBottom: 2,

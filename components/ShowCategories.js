@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, FlatList } from "react-native";
-import CategoryButton from "/CategoryButton"; // Assuming the file is in the same directory
+import CategoryButton from "./CategoryButton"; // Assuming the file is in the same directory
 
 // Importing your furniture icon for now
 import Furniture from '../assets/icons/living-room.png'; // Assuming you're using a .png icon

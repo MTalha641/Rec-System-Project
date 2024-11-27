@@ -151,7 +151,7 @@ const CreateItem = () => {
   };
 
   const submit = async () => {
-    console.log("Form Data:", JSON.stringify(form, null, 2)); // Debug log
+    console.log("Form Data:", JSON.stringify(form, null, 2)); 
     console.log("Token being used for create.js:", token);
   
     if (
