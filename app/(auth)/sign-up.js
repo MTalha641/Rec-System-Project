@@ -25,7 +25,7 @@ const SignUp = () => {
     const checkUserLoggedIn = async () => {
       const token = await AsyncStorage.getItem('accessToken');
       if (token) {
-        // If token exists, navigate to home or another screen
+        // If token exists, navigate to home
         Alert.alert("You are already logged in!");
         router.push("/home"); // Redirect to home if already logged in
       }
@@ -43,30 +43,27 @@ const SignUp = () => {
         email: form.email,
         password: form.password,
       });
-
-      console.log('API response:', response.data); 
-
+  
+      console.log('Signup response:', response.data);
+  
       if (response.status === 201) {
-        const token = response.data.token || response.data.access || null;
-
-        if (token) {
-          // Store the token in AsyncStorage
-          await AsyncStorage.setItem('accessToken', token);
-          console.log("Token stored successfully");
-
-          // Call the login function from context
-          login(token);
-
+        const accessToken = response.data.access;
+        const refreshToken = response.data.refresh;
+  
+        if (accessToken && refreshToken) {
+          // Call the login function with both tokens
+          login({ access: accessToken, refresh: refreshToken });
+  
           Alert.alert("Success", "Sign-up successful!");
-          router.push("/home"); 
+          router.push("/home");
         } else {
-          Alert.alert("Error", "Token not received.");
+          Alert.alert("Error", "Tokens not received from server.");
         }
       } else {
         Alert.alert("Error", "Something went wrong. Please try again.");
       }
     } catch (error) {
-      console.log("Error:", error); 
+      console.log("Error:", error);
       if (error.response && error.response.data) {
         Alert.alert("Error", error.response.data.error || "Failed to sign up.");
       } else {
@@ -76,6 +73,8 @@ const SignUp = () => {
       setisSubmitting(false);
     }
   };
+  
+  
 
   return (
     <SafeAreaView className="bg-primary h-full">

@@ -1,21 +1,36 @@
+from rest_framework.decorators import action
 from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
 from .models import Item
 from .serializers import ItemSerializer
+from rest_framework.exceptions import NotAuthenticated
 
 class ItemViewSet(viewsets.ModelViewSet):
     """
     A ViewSet for handling CRUD operations for the Item model.
     """
-    serializer_class = ItemSerializer  # Specifies the serializer to use
-    queryset = Item.objects.all()      # Specifies the queryset to operate on
-    permission_classes = [permissions.IsAuthenticated]  # Ensures only authenticated users can access
+    serializer_class = ItemSerializer
+    queryset = Item.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         """
         Handles GET requests to list all items.
         """
         queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='exclude-my-items')
+    def exclude_my_items(self, request):
+        """
+        Handles GET requests to list all items excluding those created by the authenticated user.
+        """
+        if not request.user.is_authenticated:
+            raise NotAuthenticated("User must be authenticated.")
+        
+        # Filter out items where rentee_id matches the logged-in user's ID
+        queryset = self.get_queryset().exclude(rentee_id=request.user.id)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -30,7 +45,7 @@ class ItemViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """
         Handles POST requests to create a new item.
-        Automatically associates the logged-in user as the 'rentee'.
+        Automatically associates the logged-in user as the 'created_by'.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -41,7 +56,7 @@ class ItemViewSet(viewsets.ModelViewSet):
         """
         Handles PUT requests to update an existing item.
         """
-        partial = kwargs.pop('partial', False)  # Check if the update is partial
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -59,6 +74,6 @@ class ItemViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Custom behavior for creating an item.
-        Associates the 'rentee' field with the currently logged-in user.
+        Associates the 'created_by' field with the currently logged-in user.
         """
-        serializer.save(rentee=self.request.user)
+        serializer.save(created_by=self.request.user)
