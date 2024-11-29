@@ -40,7 +40,7 @@ SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['172.16.86.60'] #change everytime a different connection/netwrok is made
+ALLOWED_HOSTS = ['192.168.18.6'] #change everytime a different connection/netwrok is made
 
 
 # Application definition
@@ -62,12 +62,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt',
 
-    'bookings',
-    'users',
-    'reviews',
-    'recommendations',
-    'corsheaders',
-    'rest_framework_simplejwt',
+    
 
     
     
@@ -218,17 +213,7 @@ AUTH_USER_MODEL = 'users.User'
 
 
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-}
 
-AUTH_USER_MODEL = 'users.User' 
  
 
 

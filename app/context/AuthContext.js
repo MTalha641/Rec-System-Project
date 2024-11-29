@@ -10,6 +10,14 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null); // Access token
   const [refreshToken, setRefreshToken] = useState(null); // Refresh token
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // To handle loading state
+
+  // Utility function to check if the token is expired
+  const isTokenExpired = (token) => {
+    const payload = JSON.parse(atob(token.split('.')[1])); // Decode JWT
+    const expirationTime = payload.exp * 1000; // exp is in seconds, convert to ms
+    return Date.now() > expirationTime;
+  };
 
   // Fetch stored tokens on app load
   useEffect(() => {
@@ -25,11 +33,16 @@ export const AuthProvider = ({ children }) => {
           setRefreshToken(storedRefreshToken);
         }
 
-        if (storedToken) {
+        if (storedToken && !isTokenExpired(storedToken)) {
           await fetchUserDetails(storedToken);
+        } else {
+          console.warn('Access token expired or missing. Attempting to refresh...');
+          await refreshAccessToken();
         }
       } catch (error) {
         console.error('Failed to fetch tokens from storage:', error);
+      } finally {
+        setLoading(false); // Set loading to false once token fetching is complete
       }
     };
 
@@ -88,7 +101,7 @@ export const AuthProvider = ({ children }) => {
       setToken(newAccessToken);
       await AsyncStorage.setItem('accessToken', newAccessToken);
 
-      // Retry fetching user details
+      // Retry fetching user details after refreshing token
       await fetchUserDetails(newAccessToken);
     } catch (error) {
       console.error('Failed to refresh token:', error.response?.data || error.message);
@@ -132,13 +145,13 @@ export const AuthProvider = ({ children }) => {
 
   // Automatically fetch user details when token changes
   useEffect(() => {
-    if (token) {
+    if (token && !isTokenExpired(token)) {
       fetchUserDetails(token);
     }
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout }}>
+    <AuthContext.Provider value={{ token, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

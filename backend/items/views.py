@@ -1,9 +1,9 @@
-from rest_framework.decorators import action
 from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
+from rest_framework.exceptions import NotAuthenticated
+from rest_framework.decorators import action
 from .models import Item
 from .serializers import ItemSerializer
-from rest_framework.exceptions import NotAuthenticated
 
 class ItemViewSet(viewsets.ModelViewSet):
     """
@@ -45,9 +45,18 @@ class ItemViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """
         Handles POST requests to create a new item.
-        Automatically associates the logged-in user as the 'created_by'.
+        Automatically associates the logged-in user as the 'rentee'.
         """
-        serializer = self.get_serializer(data=request.data)
+        if not request.user.is_authenticated:
+            raise NotAuthenticated("User must be authenticated.")
+        
+        # Log the authenticated user ID for debugging
+        print(f"Authenticated User ID: {request.user.id}")
+        
+        # Ensure the logged-in user is set as the rentee
+        request.data['rentee'] = request.user.id
+        
+        serializer = ItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -74,6 +83,7 @@ class ItemViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Custom behavior for creating an item.
-        Associates the 'created_by' field with the currently logged-in user.
+        Associates the 'rentee' field with the currently logged-in user.
         """
-        serializer.save(created_by=self.request.user)
+        # Automatically save the item with the logged-in user as the rentee
+        serializer.save(rentee=self.request.user)

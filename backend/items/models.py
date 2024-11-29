@@ -5,7 +5,7 @@ from users.models import User
 
 
 class Item(models.Model):
-    rentee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rentee = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=255)
     price = models.IntegerField()  # Changed to IntegerField
     location = models.CharField(max_length=255)
