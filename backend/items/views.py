@@ -50,7 +50,7 @@ class ItemViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             raise NotAuthenticated("User must be authenticated.")
         
-        # Log the authenticated user ID for debugging
+      
         print(f"Authenticated User ID: {request.user.id}")
         
         # Ensure the logged-in user is set as the rentee
