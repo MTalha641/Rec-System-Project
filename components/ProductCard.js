@@ -24,7 +24,7 @@ const ProductCard = ({ product }) => {
   }
 
   // Check if imageids is available and has at least one image
-  const productImage = product.imageids?.[0];
+  const productImage = product.imageids?.[0]?.uri; // Correctly access the `uri` property
 
   return (
     <View
@@ -40,7 +40,7 @@ const ProductCard = ({ product }) => {
       <Pressable onPress={handlePress}>
         {productImage ? (
           <Image
-            source={{ uri: productImage }} // Ensure it's a valid URI or path
+            source={{ uri: productImage }} // Ensure it's a valid URI
             className="w-full"
             resizeMode="cover"
             style={{

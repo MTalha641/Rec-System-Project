@@ -8,6 +8,7 @@ import Search from '../../components/Search';
 import Recommended from '../../components/Recommended';
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
+import ShowCategories from '../../components/ShowCategories';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '@env';
 
@@ -67,33 +68,46 @@ const Home = () => {
         data={exploreItems} // Use exploreItems for FlatList data
         keyExtractor={(item) => item.productID ? item.productID.toString() : item.id?.toString() || item.title?.toString() || Math.random().toString()}
         renderItem={({ item }) => (
-          <View className="flex-1 p-2">
+          <View style={{ flex: 1 / 2, padding: 10 }}>
             <ProductCard product={item} />
           </View>
         )}
         numColumns={2}
         contentContainerStyle={{
-          paddingHorizontal: 10,
-          paddingBottom: 20,
+          paddingHorizontal: 10
         }}
         columnWrapperStyle={{
           justifyContent: 'space-between',
         }}
         ListHeaderComponent={() => (
           <View className="my-6 px-4 space-y-6">
-            <View className="flex-row justify-between items-center mb-6">
+            <View className="flex-row justify-between items-center mb-4">
               <View>
                 <Text className="font-pmedium text-sm text-gray-100">Welcome!</Text>
-                <Text className="text-2xl font-psemibold text-white">
+                <Text className="text-2xl font-psemibold text-white"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+  
+                >
                   {user ? user.username : 'User'}
                 </Text>
               </View>
-              <Image source={logo} className="w-40 h-10" resizeMode="contain" />
+              <Image source={logo} 
+               className="h-[65px]"
+               style={{ width: 100 }} // Fixed width for the logo
+               resizeMode="contain" />
             </View>
 
             <Search />
 
-            <View className="w-full pt-5 pb-4">
+            <View className="w-full">
+              <Text className="text-gray-100 text-lg font-pregular mb-1">
+                Categories
+              </Text>
+              <ShowCategories />
+            </View>
+
+            <View className="w-full flex-1 pt-2 pb-4">
               <Text className="text-gray-100 text-lg font-pregular mb-3">Recommended Items</Text>
               <Recommended posts={exploreItems.slice(0, 5)} />
             </View>

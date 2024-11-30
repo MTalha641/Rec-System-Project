@@ -6,54 +6,75 @@ import FormField from "../../components/FormField";
 import CustomButton from "../../components/CustomButton";
 import { Link, router } from "expo-router";
 import axios from "axios";
-import AsyncStorage from '@react-native-async-storage/async-storage'; 
-import { API_URL } from '@env';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
+import SelectMultiple from "react-native-select-multiple";
+import { API_URL } from "@env";
 import { AuthContext } from "../context/AuthContext"; // Import AuthContext
+
+const categories = [
+  { label: "Home and Kitchen Appliances", value: "Home and Kitchen Appliances" },
+  { label: "Furniture", value: "Furniture" },
+  { label: "Electronics and Gadgets", value: "Electronics and Gadgets" },
+  { label: "Outdoor and Sports Equipment", value: "Outdoor and Sports Equipment" },
+  { label: "Event and Party Supplies", value: "Event and Party Supplies" },
+  { label: "Baby and Kids Items", value: "Baby and Kids Items" },
+  { label: "Tools and Equipment", value: "Tools and Equipment" },
+  { label: "Vehicles", value: "Vehicles" },
+  { label: "Health and Wellness", value: "Health and Wellness" },
+  { label: "Educational Resources", value: "Educational Resources" },
+  { label: "Office Equipment", value: "Office Equipment" },
+  { label: "Decor and Seasonal Items", value: "Decor and Seasonal Items" },
+];
 
 const SignUp = () => {
   const { login } = useContext(AuthContext); // Get login function from context
-  const [form, setform] = useState({
+  const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
+    userType: "", // New field for user type
+    interests: [], // New field for interests
   });
 
-  const [isSubmitting, setisSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if the user is already logged in by checking the token
   useEffect(() => {
     const checkUserLoggedIn = async () => {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await AsyncStorage.getItem("accessToken");
       if (token) {
-        // If token exists, navigate to home
         Alert.alert("You are already logged in!");
-        router.push("/home"); // Redirect to home if already logged in
+        router.push("/home");
       }
     };
 
-    checkUserLoggedIn(); // Call the function when the component mounts
-  }, []); // Only run on the initial render
+    checkUserLoggedIn();
+  }, []);
 
-  // Sign-up API integration with JWT handling
+  const handleInterestSelection = (selectedItems) => {
+    setForm({
+      ...form,
+      interests: selectedItems.map((item) => item.value),
+    });
+  };
+
   const submit = async () => {
-    setisSubmitting(true);
+    setIsSubmitting(true);
     try {
       const response = await axios.post(`${API_URL}/api/users/signup/`, {
         username: form.username,
         email: form.email,
         password: form.password,
+        userType: form.userType,
+        interests: form.interests,
       });
-  
-      console.log('Signup response:', response.data);
-  
+
       if (response.status === 201) {
         const accessToken = response.data.access;
         const refreshToken = response.data.refresh;
-  
+
         if (accessToken && refreshToken) {
-          // Call the login function with both tokens
           login({ access: accessToken, refresh: refreshToken });
-  
           Alert.alert("Success", "Sign-up successful!");
           router.push("/home");
         } else {
@@ -63,18 +84,15 @@ const SignUp = () => {
         Alert.alert("Error", "Something went wrong. Please try again.");
       }
     } catch (error) {
-      console.log("Error:", error);
       if (error.response && error.response.data) {
         Alert.alert("Error", error.response.data.error || "Failed to sign up.");
       } else {
         Alert.alert("Error", "Network error. Please try again.");
       }
     } finally {
-      setisSubmitting(false);
+      setIsSubmitting(false);
     }
   };
-  
-  
 
   return (
     <SafeAreaView className="bg-primary h-full">
@@ -87,43 +105,63 @@ const SignUp = () => {
             Sign Up to RentSpot!
           </Text>
 
+          {/* Username Field */}
           <FormField
             title="Username"
             value={form.username}
-            handleChangeText={(e) =>
-              setform({
-                ...form,
-                username: e,
-              })
-            }
+            handleChangeText={(e) => setForm({ ...form, username: e })}
             otherStyles="mt-7"
           />
 
+          {/* Email Field */}
           <FormField
             title="Email"
             value={form.email}
-            handleChangeText={(e) =>
-              setform({
-                ...form,
-                email: e,
-              })
-            }
+            handleChangeText={(e) => setForm({ ...form, email: e })}
             otherStyles="mt-7"
             keyboardType="email-address"
           />
 
+          {/* Password Field */}
           <FormField
             title="Password"
             value={form.password}
-            handleChangeText={(e) =>
-              setform({
-                ...form,
-                password: e,
-              })
-            }
+            handleChangeText={(e) => setForm({ ...form, password: e })}
             otherStyles="mt-7"
-            secureTextEntry={true} // Hide password input
+            secureTextEntry={true}
           />
+
+          {/* User Type Dropdown */}
+          <View className="mt-4 mb-3">
+            <Text className="text-base text-gray-100 font-pmedium mb-2">User Type</Text>
+            <View className="bg-black-100 border border-black-200 rounded-xl">
+              <Picker
+                selectedValue={form.userType}
+                onValueChange={(value) => setForm({ ...form, userType: value })}
+                style={{ color: "white", height: 50, marginHorizontal: 10 }}
+              >
+                <Picker.Item label="Select User Type" value="" />
+                <Picker.Item label="Vendor" value="Vendor" />
+                <Picker.Item label="Normal User" value="Normal User" />
+              </Picker>
+            </View>
+          </View>
+
+          {/* Interests Multi-select Dropdown */}
+          <View className="mt-4 mb-3">
+            <Text className="text-base text-gray-100 font-pmedium mb-2">Interests</Text>
+            <View style={styles.multiSelectLabel}>
+              <SelectMultiple
+                items={categories}
+                selectedItems={form.interests.map((interest) => ({
+                  label: interest,
+                  value: interest,
+                }))}
+                onSelectionsChange={handleInterestSelection}
+                style={styles.multiSelectLabel}
+              />
+            </View>
+          </View>
 
           <CustomButton
             title="Sign Up"
@@ -146,5 +184,17 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+const styles = StyleSheet.create({
+  multiSelectContainer: {
+    backgroundColor: "#1E1E2D", // New background color
+    borderRadius: 15, // Border radius
+    padding: 10,
+  },
+  multiSelectLabel: {
+    backgroundColor: "#1E1E2D", // New background color
+    borderRadius: 15,
+    color: "#CDCDE0", // New text color
+  },
+});
 
+export default SignUp;
