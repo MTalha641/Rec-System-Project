@@ -17,7 +17,7 @@ import moment from "moment";
 import { SafeAreaView } from "react-native-safe-area-context";
 import racquet from "../assets/images/racquet.jpg";
 import MapView, { Marker } from "react-native-maps";
-
+import Review from "../components/Review";
 
 const { width } = Dimensions.get("window");
 
@@ -44,12 +44,15 @@ const ProductDetails = () => {
 
   const handleSaveProduct = () => {
     setIsSaved(!isSaved);
-    Alert.alert("Saved", isSaved ? "Product removed from saved!" : "Product saved!");
+    Alert.alert(
+      "Saved",
+      isSaved ? "Product removed from saved!" : "Product saved!"
+    );
   };
 
   const handleReserveProduct = () => {
     router.push({
-      pathname: "/ReserveProduct"
+      pathname: "/ReserveProduct",
     });
   };
 
@@ -79,8 +82,17 @@ const ProductDetails = () => {
 
   return (
     <SafeAreaView className="bg-primary h-full" style={{ flex: 1 }}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ marginBottom: 10 }}>
-        <View style={{ height: 200, justifyContent: "center", alignItems: "center" }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ marginBottom: 10 }}
+      >
+        <View
+          style={{
+            height: 200,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
           <FlatList
             data={data}
             keyExtractor={(item, index) => index.toString()}
@@ -90,7 +102,14 @@ const ProductDetails = () => {
             renderItem={renderItem}
           />
         </View>
-        <View style={{ flexDirection: "row", width, justifyContent: "center", alignItems: "center" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            width,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
           {data.map((_, index) => (
             <View
               key={index}
@@ -113,20 +132,42 @@ const ProductDetails = () => {
               alignItems: "center",
             }}
           >
-            <Text className="text-gray-100 text-2xl font-pregular mb-3">{product.title}</Text>
+            <Text className="text-gray-100 text-2xl font-pregular mb-3">
+              {product.title}
+            </Text>
             <TouchableOpacity onPress={handleSaveProduct}>
-              <FontAwesome name={isSaved ? "heart" : "heart-o"} size={24} color="white" />
+              <FontAwesome
+                name={isSaved ? "heart" : "heart-o"}
+                size={24}
+                color="white"
+              />
             </TouchableOpacity>
           </View>
           <View style={{ flexDirection: "row", marginVertical: 10 }}>
             <Fontisto name="date" size={14} color="white" />
-            <Text style={{ fontSize: 14, color: "white" }}> {moment(product.timeStamp).fromNow()}</Text>
+            <Text style={{ fontSize: 14, color: "white" }}>
+              {" "}
+              {moment(product.timeStamp).format("MMMM D, YYYY")}{" "}
+              {/* Display current date */}
+            </Text>
           </View>
-          <Text className="text-gray-100 text-lg font-pregular mb-3">Description</Text>
-          <Text style={{ fontSize: 14, color: "white" }}>{product.description}</Text>
-          <Text className="text-gray-100 text-lg font-pregular mb-3">Location</Text>
+          <Text className="text-gray-100 text-lg font-pregular mb-3">
+            Description
+          </Text>
+          <Text style={{ fontSize: 14, color: "white" }}>
+            {product.description}
+          </Text>
+          <Text className="text-gray-100 text-lg font-pregular mb-3">
+            Location
+          </Text>
           <MapView
-            style={{ height: 200, borderRadius: 10, borderColor: "black", borderWidth: 0.2, marginBottom: "10px" }}
+            style={{
+              height: 200,
+              borderRadius: 10,
+              borderColor: "black",
+              borderWidth: 0.2,
+              marginBottom: "10px",
+            }}
             region={{
               latitude: product.latitude,
               longitude: product.longitude,
@@ -134,10 +175,24 @@ const ProductDetails = () => {
               longitudeDelta: 0.00421,
             }}
           >
-            <Marker coordinate={{ latitude: product.latitude, longitude: product.longitude }} title="Marker" />
+            <Marker
+              coordinate={{
+                latitude: product.latitude,
+                longitude: product.longitude,
+              }}
+              title="Marker"
+            />
           </MapView>
         </View>
+
+        <View>
+          <Text className="text-gray-100 text-lg font-pregular ml-5 mt-4">
+            Rating and Reviews
+          </Text>
+          <Review />
+        </View>
       </ScrollView>
+
       <View
         className="bg-black-100"
         style={{
@@ -155,11 +210,21 @@ const ProductDetails = () => {
         <Text style={{ fontSize: 22, color: "#475FCB", marginBottom: 10 }}>
           PKR {displayPrice}/day
         </Text>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", borderRadius: "15px" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            borderRadius: "15px",
+          }}
+        >
           <Button title="Day" onPress={() => setDisplayPrice(100)} />
           <Button title="Week" onPress={() => setDisplayPrice(85)} />
           <Button title="Month" onPress={() => setDisplayPrice(70)} />
-          <Button title="Reserve" onPress={handleReserveProduct} color="#475FCB" />
+          <Button
+            title="Reserve"
+            onPress={handleReserveProduct}
+            color="#475FCB"
+          />
         </View>
       </View>
     </SafeAreaView>

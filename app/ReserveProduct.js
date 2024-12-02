@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Image,
   Alert,
   ScrollView,
   TouchableWithoutFeedback,
@@ -10,22 +9,28 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
+  Image,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router"; // Import useRouter for navigation
 import moment from "moment";
-import racquet from "../assets/images/racquet.jpg";
+import racquet from "../assets/images/racquet.jpg"; // Existing image
+import dummyImage1 from "../assets/images/racquet.jpg"; // Dummy images
+import dummyImage2 from "../assets/images/racquet.jpg";
+import dummyImage3 from "../assets/images/racquet.jpg";
 
 const ReserveProduct = () => {
   const product = {
     title: "Sample Product",
     displayPrice: 1500,
-    imageids: [racquet],
+    imageids: [racquet, dummyImage1, dummyImage2, dummyImage3], // Add multiple images
   };
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRange, setSelectedRange] = useState({});
-  const [cardDetails, setCardDetails] = useState(null);
+  const router = useRouter(); // Initialize router for navigation
 
   const handleDateSelection = (day) => {
     if (!selectedRange.startDate) {
@@ -80,19 +85,33 @@ const ReserveProduct = () => {
     setIsLoading(true);
 
     setTimeout(() => {
-      Alert.alert("Success", "Product Reserved Successfully");
       setIsLoading(false);
+      Alert.alert("Success", "Product Reserved Successfully", [
+        { text: "OK", onPress: () => router.push("/home") }, // Navigate to home.js
+      ]);
     }, 1500);
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView className="h-full" style={styles.container}>
-        <ScrollView style={styles.scrollView}>
-          <Image
-            style={styles.productImage}
-            resizeMode="center"
-            source={product.imageids[0]}
+      <SafeAreaView className="flex-1" style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Image Slider */}
+          <FlatList
+            data={product.imageids}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <Image
+                source={item}
+                style={styles.productImage}
+                resizeMode="center"
+              />
+            )}
           />
 
           <Text style={styles.productTitle}>
@@ -200,28 +219,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#161622",
   },
-  scrollView: {
+  scrollContent: {
     padding: 16,
   },
   productImage: {
-    width: "100%",
+    width: 300,
     height: 200,
-    borderRadius: 30,
-    marginBottom: 16,
+    borderRadius: 20,
+    marginRight: 20,
+    marginLeft: 10,
   },
   productTitle: {
-    fontSize: 20,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#CDCDE0",
     marginBottom: 8,
+    marginTop: 25,
   },
   productPrice: {
-    fontSize: 18,
+    fontSize: 20,
     color: "#2a9d8f",
     marginBottom: 16,
   },
   pricePerDay: {
-    fontSize: 14,
+    fontSize: 19,
     color: "#CDCDE0",
   },
   datePickerContainer: {
@@ -229,7 +250,7 @@ const styles = StyleSheet.create({
   },
   calendarContainer: {
     backgroundColor: "#1E1E2D",
-    borderRadius: 10,
+    borderRadius: 20,
     padding: 10,
   },
   sectionTitle: {
@@ -273,6 +294,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
+    marginTop: 16,
   },
   confirmButtonText: {
     color: "#fff",

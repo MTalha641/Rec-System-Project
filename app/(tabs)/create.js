@@ -126,17 +126,27 @@ const CreateItem = () => {
   const { token} = useContext(AuthContext);
 
   const openPicker = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ["image/png", "image/jpg", "image/jpeg"],
-    });
-
-    if (!result.canceled) {
-      setForm({
-        ...form,
-        image: result.assets[0],
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["image/*"],
       });
+  
+      if (!result.canceled) {
+        const { uri, name, mimeType } = result.assets[0];
+        setForm({
+          ...form,
+          image: {
+            uri: uri.startsWith("file://") ? uri : `file://${uri}`,
+            name: name || "image.jpg",
+            type: mimeType || "image/jpeg",
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error selecting file:", error);
     }
   };
+  
 
   const handleCategoryChange = (selectedCategory) => {
     const selectedData = categories.find(
@@ -151,73 +161,60 @@ const CreateItem = () => {
   };
 
   const submit = async () => {
-    console.log("Form Data:", JSON.stringify(form, null, 2)); 
-    console.log("Token being used for create.js:", token);
-  
     if (
-      form.title === "" ||
-      form.price === "" ||
-      form.location === "" ||
-      form.category === "" ||
-      form.sub_category === "" ||
-      form.description === "" ||
+      !form.title ||
+      !form.price ||
+      !form.location ||
+      !form.category ||
+      !form.sub_category ||
+      !form.description ||
       !form.image
     ) {
-      return Alert.alert("Please provide all fields");
+      Alert.alert("Error", "All fields are required, including an image.");
+      return;
     }
   
     setUploading(true);
+  
     try {
       const formData = new FormData();
       formData.append("title", form.title);
-      formData.append("price", parseInt(form.price, 10)); // Convert price to integer
+      formData.append("price", parseInt(form.price, 10));
       formData.append("location", form.location);
       formData.append("category", form.category);
-      formData.append("sub_category", form.sub_category); // Ensure correct field name
+      formData.append("sub_category", form.sub_category);
       formData.append("description", form.description);
   
-      const imageUri = form.image.uri;
-      const imageName = form.image.name || "image.jpg";
-      const imageType = form.image.type || "image/jpeg";
+      const { uri, name, type } = form.image;
   
       formData.append("image", {
-        uri: imageUri,
-        name: imageName,
-        type: imageType,
+        uri: uri.startsWith("file://") ? uri : `file://${uri}`,
+        name: name || "image.jpg",
+        type: type || "image/jpeg",
       });
   
-      const response = await axios.post(
-        `${API_URL}/api/items/create/`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.post(`${API_URL}/api/items/create/`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
   
       if (response.status === 201) {
-        Alert.alert("Success", "Ad uploaded successfully");
+        Alert.alert("Success", "Ad created successfully!");
         router.push("/home");
       } else {
-        throw new Error(response?.data?.message || "Something went wrong.");
+        throw new Error("Something went wrong while creating the ad.");
       }
     } catch (error) {
-      Alert.alert("Error", error.response?.data || error.message);
+      console.error("Error creating ad:", error);
+      Alert.alert("Error", error.message || "Failed to create ad.");
     } finally {
-      setForm({
-        title: "",
-        price: "",
-        location: "",
-        category: "",
-        sub_category: "",
-        image: null,
-        description: "",
-      });
       setUploading(false);
     }
   };
+  
+  
   
 
   return (
