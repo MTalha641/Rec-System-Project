@@ -2,8 +2,10 @@ from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.decorators import action
-from .models import Item
-from .serializers import ItemSerializer
+from .models import Item,SearchHistory
+from .serializers import ItemSerializer,SearchHistorySerializer
+from django.db.models import Q
+
 
 class ItemViewSet(viewsets.ModelViewSet):
     """
@@ -87,3 +89,37 @@ class ItemViewSet(viewsets.ModelViewSet):
         """
         # Automatically save the item with the logged-in user as the rentee
         serializer.save(rentee=self.request.user)
+
+
+    @action(detail=False, methods=['get'], url_path='search')
+    def search_items(self, request):
+        """
+        Search for items and log the search query along with the logged-in user's ID.
+        """
+        query = request.query_params.get('q', '').strip()  # Get the search query
+        if not query:
+            return Response({"detail": "Search query is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Search items
+        items = Item.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query)
+        )
+        
+        # Serialize the results
+        serializer = ItemSerializer(items, many=True)
+        
+        # Log the search query in the SearchHistory model
+        search_entry = SearchHistory.objects.create(
+            user=request.user,
+            item=query
+        )
+        search_entry.save()
+
+        return Response({
+            "search_results": serializer.data,
+            "message": f"Search for '{query}' logged successfully."
+        }, status=status.HTTP_200_OK)
+
+
+    
