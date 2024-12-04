@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
+from django.utils import timezone
 from users.models import User
 from items.models import Item, SearchHistory
 
@@ -44,7 +45,39 @@ def content_based_recommendations(user_id):
             scores = cosine_similarity(user_tfidf, items_tfidf).flatten()
             items_data_df['similarity'] = scores
 
-            return items_data_df.sort_values(by='similarity', ascending=False).head(5)
+            # Calculate recency score for each item
+            now = timezone.now()  # timezone-aware current time
+            recency_scores = []
+
+            for item in items_data:
+                # Get the most recent search timestamp for each item
+                recent_search = SearchHistory.objects.filter(item_id=item['id'], user_id=user_id).order_by('-timestamp').first()
+                recency_score = 0
+                if recent_search:
+                    # Ensure both datetimes are of the same type (aware or naive)
+                    recent_timestamp = recent_search.timestamp
+                    
+                    if recent_timestamp.tzinfo is None and now.tzinfo is not None:
+                        # Convert naive to aware datetime if necessary
+                        recent_timestamp = timezone.make_aware(recent_timestamp, timezone.get_current_timezone())
+                    elif recent_timestamp.tzinfo is not None and now.tzinfo is None:
+                        # Convert aware to naive datetime if necessary
+                        recent_timestamp = timezone.make_naive(recent_timestamp, timezone.get_current_timezone())
+
+                    # Calculate recency as a function of time difference
+                    time_diff = now - recent_timestamp
+                    recency_score = max(0, (1 - time_diff.total_seconds() / (3600 * 24)))  # Normalize to 0-1 based on days
+
+                recency_scores.append(recency_score)
+
+            # Add recency score to the dataframe
+            items_data_df['recency'] = recency_scores
+
+            # Combine similarity and recency scores: weight them (you can adjust the weights as needed)
+            items_data_df['final_score'] = items_data_df['similarity'] * 0.6 + items_data_df['recency'] * 0.4
+
+            # Sort by final score and return top 5 items
+            return items_data_df.sort_values(by='final_score', ascending=False).head(5)
 
         return pd.DataFrame()
 
