@@ -14,18 +14,17 @@ class Item(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     temporary_field1 = models.BooleanField(default=True)
 
+    def __str__(self):
+        return self.title
 
 
 class SearchHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, null=True, blank=True)  # Allow null for logging generic searches
+    search_query = models.CharField(max_length=255, null=True, blank=True)  # Store raw search queries
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} searched for {self.item}"
-
-
-
-
-    def __str__(self):
-        return self.title
+        if self.item:
+            return f"{self.user.username} searched for {self.item.title}"
+        return f"{self.user.username} searched '{self.search_query}'"

@@ -90,7 +90,6 @@ class ItemViewSet(viewsets.ModelViewSet):
         # Automatically save the item with the logged-in user as the rentee
         serializer.save(rentee=self.request.user)
 
-
     @action(detail=False, methods=['get'], url_path='search')
     def search_items(self, request):
         """
@@ -108,18 +107,23 @@ class ItemViewSet(viewsets.ModelViewSet):
         
         # Serialize the results
         serializer = ItemSerializer(items, many=True)
-        
+    
+        # Attempt to find the most relevant item for the search query
+        relevant_item = items.first() if items.exists() else None
+    
         # Log the search query in the SearchHistory model
         search_entry = SearchHistory.objects.create(
             user=request.user,
-            item=query
+            item=relevant_item,  # Associate the first relevant item, if found
+            search_query=query if relevant_item is None else None  # Store raw query if no item matches
         )
         search_entry.save()
-
+    
         return Response({
             "search_results": serializer.data,
             "message": f"Search for '{query}' logged successfully."
         }, status=status.HTTP_200_OK)
+    
 
 
     
