@@ -5,7 +5,7 @@ import axios from 'axios'; // Import axios
 
 import logo from '../../assets/images/RLogo.png';
 import Search from '../../components/Search';
-import Recommended from '../../components/Recommended';
+import Recommended from '../../components/Recommended'; // Recommended fetches its own data
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
 import ShowCategories from '../../components/ShowCategories';
@@ -66,7 +66,11 @@ const Home = () => {
     <SafeAreaView className="bg-primary h-full">
       <FlatList
         data={exploreItems} // Use exploreItems for FlatList data
-        keyExtractor={(item) => item.productID ? item.productID.toString() : item.id?.toString() || item.title?.toString() || Math.random().toString()}
+        keyExtractor={(item) =>
+          item.productID
+            ? item.productID.toString()
+            : item.id?.toString() || item.title?.toString() || Math.random().toString()
+        }
         renderItem={({ item }) => (
           <View style={{ flex: 1 / 2, padding: 10 }}>
             <ProductCard product={item} />
@@ -74,7 +78,7 @@ const Home = () => {
         )}
         numColumns={2}
         contentContainerStyle={{
-          paddingHorizontal: 10
+          paddingHorizontal: 10,
         }}
         columnWrapperStyle={{
           justifyContent: 'space-between',
@@ -84,32 +88,32 @@ const Home = () => {
             <View className="flex-row justify-between items-center mb-4">
               <View>
                 <Text className="font-pmedium text-sm text-gray-100">Welcome!</Text>
-                <Text className="text-2xl font-psemibold text-white"
-                numberOfLines={1}
-                ellipsizeMode="tail"
-  
+                <Text
+                  className="text-2xl font-psemibold text-white"
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {user ? user.username : 'User'}
                 </Text>
               </View>
-              <Image source={logo} 
-               className="h-[65px]"
-               style={{ width: 100 }} // Fixed width for the logo
-               resizeMode="contain" />
+              <Image
+                source={logo}
+                className="h-[65px]"
+                style={{ width: 100 }} // Fixed width for the logo
+                resizeMode="contain"
+              />
             </View>
 
             <Search />
 
             <View className="w-full">
-              <Text className="text-gray-100 text-lg font-pregular mb-1">
-                Categories
-              </Text>
+              <Text className="text-gray-100 text-lg font-pregular mb-1">Categories</Text>
               <ShowCategories />
             </View>
 
             <View className="w-full flex-1 pt-2 pb-4">
               <Text className="text-gray-100 text-lg font-pregular mb-3">Recommended Items</Text>
-              <Recommended posts={exploreItems.slice(0, 5)} />
+              <Recommended /> {/* No props passed here */}
             </View>
 
             <Text className="text-gray-100 text-lg font-pregular mb-1">Explore Items</Text>
@@ -121,8 +125,10 @@ const Home = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListFooterComponent={() => 
-          loading && <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 20 }} />
+        ListFooterComponent={() =>
+          loading && (
+            <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 20 }} />
+          )
         }
       />
     </SafeAreaView>

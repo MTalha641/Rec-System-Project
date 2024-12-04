@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useContext } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import axios from "axios";
 import { API_URL } from '@env';
 import { AuthContext } from "../app/context/AuthContext";
-import ProductCard from "./ProductCard"; 
+import ProductCard from "./ProductCard"; // Import your ProductCard component
 
 const Recommended = () => {
   const { token } = useContext(AuthContext); // Access token from AuthContext
@@ -29,13 +23,18 @@ const Recommended = () => {
         // Log token to verify it's being sent
         console.log("Authorization Token:", `Bearer ${token}`);
 
-        const response = await axios.get(`${API_URL}/api/recommendations/getrecommendation`, {
+        const response = await axios.get(`${API_URL}/api/recommendations/getrecommendation/`, {
           headers: {
             Authorization: `Bearer ${token}`, // Pass token in headers
           },
         });
 
-        setPosts(response.data);
+        // Check if the response has recommendations
+        if (response.data.success) {
+          setPosts(response.data.recommendations); // Set recommendations from API response
+        } else {
+          console.error("Failed to load recommendations:", response.data.message || "Unknown error");
+        }
       } catch (error) {
         console.error("Error fetching recommended products:", error.response?.data || error.message);
       } finally {
@@ -59,7 +58,7 @@ const Recommended = () => {
       ) : (
         <FlatList
           data={posts}
-          keyExtractor={(item) => item.productID.toString()}
+          keyExtractor={(item) => item.id.toString()} // Use the `id` from API response for keyExtractor
           renderItem={renderTrendingItem}
           horizontal
           showsHorizontalScrollIndicator={false}
