@@ -1,56 +1,77 @@
-import { FlatList, View } from 'react-native';
-import React, { useState } from 'react';
-import ProductCard from './ProductCard'; // Import the ProductCard component
-import * as Animatable from 'react-native-animatable'
+import React, { useState, useEffect, useContext } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import axios from "axios";
+import { API_URL } from '@env';
+import { AuthContext } from "../app/context/AuthContext";
+import ProductCard from "./ProductCard"; 
 
-const zoomIn = {
-  0: {
-    scale: 0.9
-  },
+const Recommended = () => {
+  const { token } = useContext(AuthContext); // Access token from AuthContext
+  const [posts, setPosts] = useState([]); 
+  const [loading, setLoading] = useState(false); 
 
-  1: {
-    scale: 1
-  }
-}
+  useEffect(() => {
+    const fetchRecommendedProducts = async () => {
+      if (!token) {
+        console.error("No token available");
+        return;
+      }
 
-const zoomOut = {
-  0: {
-    scale: 1
-  },
+      setLoading(true);
 
-  1: {
-    scale: 0.9
-  }
-}
+      try {
+        // Log token to verify it's being sent
+        console.log("Authorization Token:", `Bearer ${token}`);
 
-const TrendingItem = ({activeItem, item}) => {
-  return (
-    <Animatable.View
-      animation={activeItem === item.productID ? zoomIn : zoomOut }
-      style={{ width: 150 }}
-    >
+        const response = await axios.get(`${API_URL}/api/recommendations/getrecommendation`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Pass token in headers
+          },
+        });
+
+        setPosts(response.data);
+      } catch (error) {
+        console.error("Error fetching recommended products:", error.response?.data || error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendedProducts();
+  }, [token]);
+
+  const renderTrendingItem = ({ item }) => (
+    <TouchableOpacity style={{ width: 150 }}>
       <ProductCard product={item} />
-    </Animatable.View> 
+    </TouchableOpacity>
   );
-}
-
-const Recommended = ({ posts }) => {
-  const [activeItem, setActiveItem] = useState(posts[1]);
-
-  // Slice the posts array to show only 7 items
-  const limitedPosts = posts.slice(0, 7);
 
   return (
-    <View className="flex-row items-center justify-center border-black-200 w-full">
-      <FlatList
-        data={limitedPosts} // Pass the sliced posts array
-        keyExtractor={(item) => item.productID} // Use productID as key
-        renderItem={({ item }) => (
-          <TrendingItem activeItem={activeItem} item={item} />
-        )}
-        horizontal // Makes the FlatList horizontal
-        showsHorizontalScrollIndicator={false} // Hides the scroll indicator
-      />
+    <View style={{ flex: 1, backgroundColor: "#1E1E1E", padding: 16 }}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#FFFFFF" style={{ marginTop: 20 }} />
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.productID.toString()}
+          renderItem={renderTrendingItem}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ marginTop: 20 }}
+        />
+      )}
+
+      {!loading && posts.length === 0 && (
+        <Text style={{ color: "#FFFFFF", textAlign: "center", marginTop: 20 }}>
+          No recommended products available.
+        </Text>
+      )}
     </View>
   );
 };
