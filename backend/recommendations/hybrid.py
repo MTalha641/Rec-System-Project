@@ -14,14 +14,14 @@ def content_based_recommendations(user_id):
         user_interests = ' '.join(user_profile.interests or [])  # Handle missing interests with an empty list
 
         # Fetch search history (titles from items only)
-        search_history_items = SearchHistory.objects.filter(user_id=user_id, item__isnull=False).values_list('item__title', flat=True)
+        search_history_items = SearchHistory.objects.filter(user_id=user_id, item_isnull=False).values_list('item_title', flat=True)
 
         # Combine user interests and search history
         search_history_text = ' '.join(search_history_items)
         user_text = user_interests + ' ' + search_history_text
 
-        # Fetch all items and prepare data
-        items = Item.objects.all()
+        # Fetch all items excluding the user's created items
+        items = Item.objects.exclude(rentee_id=user_id)  # Exclude items created by the user
         items_data = list(items.values('id', 'title', 'category', 'description', 'price', 'image'))  # Include price and image
 
         # Ensure no None values in the data
@@ -56,17 +56,9 @@ def content_based_recommendations(user_id):
                 recent_search = SearchHistory.objects.filter(item_id=item['id'], user_id=user_id).order_by('-timestamp').first()
                 recency_score = 0
                 if recent_search:
-                    # Ensure both datetimes are of the same type (aware or naive)
                     recent_timestamp = recent_search.timestamp
-                    
-                    if recent_timestamp.tzinfo is None and now.tzinfo is not None:
-                        # Convert naive to aware datetime if necessary
-                        recent_timestamp = timezone.make_aware(recent_timestamp, timezone.get_current_timezone())
-                    elif recent_timestamp.tzinfo is not None and now.tzinfo is None:
-                        # Convert aware to naive datetime if necessary
-                        recent_timestamp = timezone.make_naive(recent_timestamp, timezone.get_current_timezone())
-
-                    # Calculate recency as a function of time difference
+                    if recent_timestamp.tzinfo is None:
+                        recent_timestamp = timezone.make_aware(recent_timestamp)
                     time_diff = now - recent_timestamp
                     recency_score = max(0, (1 - time_diff.total_seconds() / (3600 * 24)))  # Normalize to 0-1 based on days
 
@@ -88,11 +80,12 @@ def content_based_recommendations(user_id):
         return pd.DataFrame()
 
 
+
 # Collaborative Filtering Recommendations
 def collaborative_filtering(user_id):
     try:
-        # Fetch user-item interactions
-        interactions = SearchHistory.objects.all().values('user_id', 'item_id')  # Use `item_id` for ForeignKey
+        # Fetch user-item interactions excluding the user's own items
+        interactions = SearchHistory.objects.filter(item_rentee_id_ne=user_id).values('user_id', 'item_id')  # Exclude user's own items
         interaction_df = pd.DataFrame(interactions)
 
         if interaction_df.empty:
@@ -144,6 +137,7 @@ def collaborative_filtering(user_id):
         return pd.DataFrame()  # Return empty DataFrame on error
 
 
+
 # Hybrid Recommendations
 def hybrid_recommendation_system(user_id):
     try:
@@ -162,4 +156,4 @@ def hybrid_recommendation_system(user_id):
 
     except Exception as e:
         print(f"Error in hybrid recommendation system: {e}")
-        return pd.DataFrame()  # Return empty DataFrame on error
+        return pd.DataFrame()  # Return empty DataFrame on error
