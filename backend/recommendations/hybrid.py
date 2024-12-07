@@ -22,13 +22,15 @@ def content_based_recommendations(user_id):
 
         # Fetch all items and prepare data
         items = Item.objects.all()
-        items_data = list(items.values('id', 'title', 'category', 'description'))
+        items_data = list(items.values('id', 'title', 'category', 'description', 'price', 'image'))  # Include price and image
 
         # Ensure no None values in the data
         for item in items_data:
             item['title'] = item['title'] or ""
             item['category'] = item['category'] or ""
             item['description'] = item['description'] or ""
+            item['price'] = item['price'] or 0  # Assuming price should be numeric
+            item['image'] = item['image'] or ""  # Assuming image is a URL or path
 
         items_data_df = pd.DataFrame(items_data)
         if not items_data_df.empty:
@@ -77,13 +79,14 @@ def content_based_recommendations(user_id):
             items_data_df['final_score'] = items_data_df['similarity'] * 0.6 + items_data_df['recency'] * 0.4
 
             # Sort by final score and return top 5 items
-            return items_data_df.sort_values(by='final_score', ascending=False).head(5)
+            return items_data_df[['id', 'title', 'category', 'description', 'price', 'image', 'final_score']].sort_values(by='final_score', ascending=False).head(5)
 
         return pd.DataFrame()
 
     except Exception as e:
         print(f"Error in content-based recommendations: {e}")
         return pd.DataFrame()
+
 
 # Collaborative Filtering Recommendations
 def collaborative_filtering(user_id):
@@ -126,7 +129,9 @@ def collaborative_filtering(user_id):
                 'id': item.id,
                 'title': item.title or "",
                 'category': item.category or "",
-                'description': item.description or ""
+                'description': item.description or "",
+                'price': item.price or 0,  # Add price
+                'image': item.image or ""   # Add image
             }
             for item in recommended_items
         ]
@@ -137,6 +142,7 @@ def collaborative_filtering(user_id):
     except Exception as e:
         print(f"Error in collaborative filtering: {e}")
         return pd.DataFrame()  # Return empty DataFrame on error
+
 
 # Hybrid Recommendations
 def hybrid_recommendation_system(user_id):

@@ -4,11 +4,32 @@ import axios from "axios";
 import { API_URL } from '@env';
 import { AuthContext } from "../app/context/AuthContext";
 import ProductCard from "./ProductCard"; // Import your ProductCard component
+import * as Animatable from 'react-native-animatable';
+
+// Zoom-in and zoom-out animations for the trending items
+const zoomIn = {
+  0: {
+    scale: 0.9
+  },
+  1: {
+    scale: 1
+  }
+};
+
+const zoomOut = {
+  0: {
+    scale: 1
+  },
+  1: {
+    scale: 0.9
+  }
+};
 
 const Recommended = () => {
   const { token } = useContext(AuthContext); // Access token from AuthContext
   const [posts, setPosts] = useState([]); 
   const [loading, setLoading] = useState(false); 
+  const [activeItem, setActiveItem] = useState(null);
 
   useEffect(() => {
     const fetchRecommendedProducts = async () => {
@@ -46,13 +67,18 @@ const Recommended = () => {
   }, [token]);
 
   const renderTrendingItem = ({ item }) => (
-    <TouchableOpacity style={{ width: 150 }}>
-      <ProductCard product={item} />
-    </TouchableOpacity>
+    <Animatable.View
+      animation={activeItem === item.id ? zoomIn : zoomOut}
+      style={{ width: 150 }}
+    >
+      <TouchableOpacity onPress={() => setActiveItem(item.id)}>
+        <ProductCard product={item} />
+      </TouchableOpacity>
+    </Animatable.View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#1E1E1E", padding: 16 }}>
+    <View className="flex-row items-center justify-center border-black-200 w-full">
       {loading ? (
         <ActivityIndicator size="large" color="#FFFFFF" style={{ marginTop: 20 }} />
       ) : (
@@ -62,7 +88,6 @@ const Recommended = () => {
           renderItem={renderTrendingItem}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ marginTop: 20 }}
         />
       )}
 
