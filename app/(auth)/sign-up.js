@@ -10,7 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import SelectMultiple from "react-native-select-multiple";
 import { API_URL } from "@env";
-import { AuthContext } from "../context/AuthContext"; // Import AuthContext
+import { AuthContext } from "../context/AuthContext";
 
 const categories = [
   { label: "Home and Kitchen Appliances", value: "Home and Kitchen Appliances" },
@@ -28,13 +28,12 @@ const categories = [
 ];
 
 const SignUp = () => {
-  const { login } = useContext(AuthContext); // Get login function from context
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
-    userType: "", // New field for user type
-    interests: [], // New field for interests
+    userType: "",
+    interests: [],
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,16 +69,8 @@ const SignUp = () => {
       });
 
       if (response.status === 201) {
-        const accessToken = response.data.access;
-        const refreshToken = response.data.refresh;
-
-        if (accessToken && refreshToken) {
-          login({ access: accessToken, refresh: refreshToken });
-          Alert.alert("Success", "Sign-up successful!");
-          router.push("/home");
-        } else {
-          Alert.alert("Error", "Tokens not received from server.");
-        }
+        Alert.alert("Success", "Sign-up successful! Please sign in to your account.");
+        router.push("/sign-in"); // Redirect to sign-in page
       } else {
         Alert.alert("Error", "Something went wrong. Please try again.");
       }
@@ -105,7 +96,6 @@ const SignUp = () => {
             Sign Up to RentSpot!
           </Text>
 
-          {/* Username Field */}
           <FormField
             title="Username"
             value={form.username}
@@ -113,7 +103,6 @@ const SignUp = () => {
             otherStyles="mt-7"
           />
 
-          {/* Email Field */}
           <FormField
             title="Email"
             value={form.email}
@@ -122,7 +111,6 @@ const SignUp = () => {
             keyboardType="email-address"
           />
 
-          {/* Password Field */}
           <FormField
             title="Password"
             value={form.password}
@@ -131,7 +119,6 @@ const SignUp = () => {
             secureTextEntry={true}
           />
 
-          {/* User Type Dropdown */}
           <View className="mt-4 mb-3">
             <Text className="text-base text-gray-100 font-pmedium mb-2">User Type</Text>
             <View className="bg-black-100 border border-black-200 rounded-xl">
@@ -147,7 +134,6 @@ const SignUp = () => {
             </View>
           </View>
 
-          {/* Interests Multi-select Dropdown */}
           <View className="mt-4 mb-3">
             <Text className="text-base text-gray-100 font-pmedium mb-2">Interests</Text>
             <View style={styles.multiSelectLabel}>
@@ -186,14 +172,14 @@ const SignUp = () => {
 
 const styles = StyleSheet.create({
   multiSelectContainer: {
-    backgroundColor: "#1E1E2D", // New background color
-    borderRadius: 15, // Border radius
+    backgroundColor: "#1E1E2D",
+    borderRadius: 15,
     padding: 10,
   },
   multiSelectLabel: {
-    backgroundColor: "#1E1E2D", // New background color
+    backgroundColor: "#1E1E2D",
     borderRadius: 15,
-    color: "#CDCDE0", // New text color
+    color: "#CDCDE0",
   },
 });
 
