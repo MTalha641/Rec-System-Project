@@ -9,26 +9,26 @@ import * as Animatable from 'react-native-animatable';
 // Zoom-in and zoom-out animations for the trending items
 const zoomIn = {
   0: {
-    scale: 0.9
+    scale: 0.9,
   },
   1: {
-    scale: 1
-  }
+    scale: 1,
+  },
 };
 
 const zoomOut = {
   0: {
-    scale: 1
+    scale: 1,
   },
   1: {
-    scale: 0.9
-  }
+    scale: 0.9,
+  },
 };
 
 const Recommended = () => {
   const { token } = useContext(AuthContext); // Access token from AuthContext
-  const [posts, setPosts] = useState([]); 
-  const [loading, setLoading] = useState(false); 
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
 
   useEffect(() => {
@@ -41,7 +41,6 @@ const Recommended = () => {
       setLoading(true);
 
       try {
-        // Log token to verify it's being sent
         console.log("Authorization Token:", `Bearer ${token}`);
 
         const response = await axios.get(`${API_URL}/api/recommendations/getrecommendation/`, {
@@ -50,9 +49,14 @@ const Recommended = () => {
           },
         });
 
-        // Check if the response has recommendations
         if (response.data.success) {
-          setPosts(response.data.recommendations); // Set recommendations from API response
+          // Process the image URLs
+          const recommendations = response.data.recommendations.map((item) => ({
+            ...item,
+            image: item.image ? `${API_URL}/media/${item.image}`.replace(/\/\/+/g, '/') : null,
+          }));
+
+          setPosts(recommendations);
         } else {
           console.error("Failed to load recommendations:", response.data.message || "Unknown error");
         }
