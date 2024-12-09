@@ -2,11 +2,9 @@ import React from "react";
 import { View, Text, FlatList } from "react-native";
 import CategoryButton from "./CategoryButton"; // Assuming the file is in the same directory
 
-// Importing your furniture icon for now
-import Furniture from '../assets/icons/living-room.png'; // Assuming you're using a .png icon
+import Furniture from '../assets/icons/living-room.png'; // Adjust path if needed
 
 const ShowCategories = ({ navigation }) => {
-  // Array of categories with names and using the Furniture icon for all categories temporarily
   const categories = [
     { name: "Tools", icon: Furniture },
     { name: "Equipment", icon: Furniture },
@@ -20,8 +18,7 @@ const ShowCategories = ({ navigation }) => {
   ];
 
   return (
-    <View className = "mt-4">
-      
+    <View className="mt-4">
       <FlatList
         data={categories}
         horizontal
@@ -30,8 +27,8 @@ const ShowCategories = ({ navigation }) => {
         renderItem={({ item }) => (
           <CategoryButton
             Icon={item.icon}
-            IconName={item.name}
-            navigation={navigation} // Pass navigation to CategoryButton for navigation logic
+            IconName={item.name || "Default Name"} // Provide fallback name
+            navigation={navigation}
           />
         )}
       />

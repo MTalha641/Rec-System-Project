@@ -32,10 +32,11 @@ const Recommended = () => {
   const [activeItem, setActiveItem] = useState(null);
 
   useEffect(() => {
+    // Function to fetch recommended products
     const fetchRecommendedProducts = async () => {
       if (!token) {
-        console.error("No token available");
-        return;
+        console.log("Token is not available yet. Skipping fetch.");
+        return; // Skip fetching if token is not ready
       }
 
       setLoading(true);
@@ -67,7 +68,10 @@ const Recommended = () => {
       }
     };
 
-    fetchRecommendedProducts();
+    // Only fetch recommendations if the token is available
+    if (token) {
+      fetchRecommendedProducts();
+    }
   }, [token]);
 
   const renderTrendingItem = ({ item }) => (

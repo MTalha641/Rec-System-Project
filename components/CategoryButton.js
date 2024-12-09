@@ -1,51 +1,35 @@
-import { View, Text, TouchableOpacity, Image } from "react-native";
-import React, { useState } from "react";
+import React from "react";
+import { TouchableOpacity, Text, Image, View } from "react-native";
 
-const CategoryButton = ({ Icon, IconName, Upload, navigation }) => {
-  const [selectedCategory, setSelectedCategory] = useState(null);
-
+const CategoryButton = ({ Icon, IconName, navigation }) => {
   return (
     <TouchableOpacity
-      style={{ marginRight: 8 }}
-      onPress={() => {
-        setSelectedCategory(IconName);
-        if (Upload) {
-          // Handle upload functionality if needed
-        } else {
-          navigation.navigate("CategoriesProduct", {
-            category: IconName, // Passing the category name to the next screen
-          });
-        }
+      style={{
+        alignItems: "center",
+        marginHorizontal: 8,
+        backgroundColor: "#1e1e1e",
+        padding: 10,
+        borderRadius: 8,
       }}
+      onPress={() =>
+        navigation?.navigate("CategoryItems", { category: IconName })
+      } // Ensure navigation exists
     >
-      {/* Wrap the icon and text in a single View to align them vertically */}
-      <View style={{ alignItems: "center" }}> 
-        <View
-          style={{
-            height: 65,
-            width: 65,
-            borderRadius: 999,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#F4F4F4",
-            marginBottom: 10, // Added to create space between icon and text
-          }}
-        >
-          {/* Display the icon using Image component */}
-          <Image source={Icon} style={{ height: 40, width: 40 }} />
-        </View>
-        <Text 
-          style={{ 
-
-            textAlign: "center", 
-            fontSize: 14, 
-            fontWeight: "500"  // Added font weight for emphasis
-          }}
-          className= "text-gray-100"
-        >
-          {IconName}
-        </Text>
-      </View>
+      <Image
+        source={Icon}
+        style={{ width: 40, height: 40 }}
+        resizeMode="contain"
+      />
+      <Text
+        style={{
+          marginTop: 8,
+          color: "white",
+          fontSize: 12,
+          textAlign: "center",
+        }}
+      >
+        {IconName || "Default Category"} {/* Provide a fallback name */}
+      </Text>
     </TouchableOpacity>
   );
 };

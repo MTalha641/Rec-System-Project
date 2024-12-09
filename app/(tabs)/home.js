@@ -93,7 +93,7 @@ const Home = () => {
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {user ? user.username : 'User'}
+                  {user ? (user.username ? user.username : 'User') : 'User'}
                 </Text>
               </View>
               <Image
@@ -107,16 +107,16 @@ const Home = () => {
             <Search />
 
             <View className="w-full">
-              <Text className="text-lg font-pregular mb-1" style={{color: "#ffffff"}}>Categories</Text>
+              <Text className="text-lg font-pregular mb-1" style={{ color: '#ffffff' }}>Categories</Text>
               <ShowCategories />
             </View>
 
             <View className="w-full flex-1 pt-2 pb-4">
-              <Text className="text-lg font-pregular mb-3" style={{color: "#ffffff"}}>Recommended Items</Text>
+              <Text className="text-lg font-pregular mb-3" style={{ color: '#ffffff' }}>Recommended Items</Text>
               <Recommended /> {/* No props passed here */}
             </View>
 
-            <Text className="text-lg font-pregular mb-1" style={{color: "#ffffff"}}>Explore Items</Text>
+            <Text className="text-lg font-pregular mb-1" style={{ color: '#ffffff' }}>Explore Items</Text>
           </View>
         )}
         ListEmptyComponent={() =>
