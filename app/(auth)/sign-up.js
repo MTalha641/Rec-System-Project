@@ -12,16 +12,10 @@ import SelectMultiple from "react-native-select-multiple";
 import { API_URL } from "@env";
 
 const categories = [
-  {
-    label: "Home and Kitchen Appliances",
-    value: "Home and Kitchen Appliances",
-  },
+  { label: "Home and Kitchen Appliances", value: "Home and Kitchen Appliances" },
   { label: "Furniture", value: "Furniture" },
   { label: "Electronics and Gadgets", value: "Electronics and Gadgets" },
-  {
-    label: "Outdoor and Sports Equipment",
-    value: "Outdoor and Sports Equipment",
-  },
+  { label: "Outdoor and Sports Equipment", value: "Outdoor and Sports Equipment" },
   { label: "Event and Party Supplies", value: "Event and Party Supplies" },
   { label: "Baby and Kids Items", value: "Baby and Kids Items" },
   { label: "Tools and Equipment", value: "Tools and Equipment" },
@@ -132,7 +126,8 @@ const SignUp = () => {
 
   return (
     <SafeAreaView className="bg-primary h-full">
-      <ScrollView>
+      {/* Use nestedScrollEnabled to avoid ScrollView conflicts */}
+      <ScrollView nestedScrollEnabled>
         <View className="items-center justify-center">
           <Image
             source={logo}
@@ -189,7 +184,7 @@ const SignUp = () => {
             <Text className="text-base text-gray-100 font-pmedium mb-2">
               Interests
             </Text>
-            <View style={styles.multiSelectLabel}>
+            <View style={styles.multiSelectContainer}>
               <SelectMultiple
                 items={categories}
                 selectedItems={form.interests.map((interest) => ({
@@ -197,8 +192,7 @@ const SignUp = () => {
                   value: interest,
                 }))}
                 onSelectionsChange={handleInterestSelection}
-                style={styles.multiSelectLabel}
-                listProps={{ nestedScrollEnabled: true }} // Pass nestedScrollEnabled to the FlatList
+                listProps={{ nestedScrollEnabled: true }} // Enable nested scrolling
               />
             </View>
           </View>
@@ -232,11 +226,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E1E2D",
     borderRadius: 15,
     padding: 10,
-  },
-  multiSelectLabel: {
-    backgroundColor: "#1E1E2D",
-    borderRadius: 15,
-    color: "#CDCDE0",
   },
 });
 

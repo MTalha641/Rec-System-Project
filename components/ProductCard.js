@@ -54,21 +54,28 @@ const ProductCard = ({ product }) => {
               borderTopRightRadius: 16,
             }}
           >
-            <Text className="text-center text-gray-500">No Image</Text>
+            <Text style={{ textAlign: "center", color: "#9E9E9E" }}>
+              No Image
+            </Text>
           </View>
         )}
-        <View className="px-4 pt-1">
-          <Text className="font-bold text-white text-sm truncate" numberOfLines={1}>
-            {product.title}
+        <View style={{ padding: 16 }}>
+          <Text
+            style={{ fontWeight: "bold", color: "#FFFFFF", fontSize: 14 }}
+            numberOfLines={1}
+          >
+            {product.title || "Untitled Product"}
           </Text>
-          <Text className="text-blue-600 text-sm truncate">
-            PKR {product.price}
-            <Text className="text-white"> /day</Text>
-          </Text>
-          <View className="flex-row justify-start items-center mt-1">
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+            <Text style={{ color: "#007BFF", fontSize: 12 }}>
+              PKR {product.price || "N/A"}
+            </Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 12 }}> /day</Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
             <MaterialIcons name="category" size={16} color="#777777" />
-            <Text className="text-xs truncate text-white ml-1">
-              {product.category}
+            <Text style={{ fontSize: 12, color: "#FFFFFF", marginLeft: 4 }}>
+              {product.category || "Uncategorized"}
             </Text>
           </View>
         </View>

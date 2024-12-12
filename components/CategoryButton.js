@@ -1,4 +1,3 @@
-
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import React, { useState } from "react";
 
