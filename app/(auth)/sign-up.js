@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, Image, Alert } from "react-native";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import logo from "../../assets/images/RLogo.png";
 import FormField from "../../components/FormField";
@@ -10,13 +10,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import SelectMultiple from "react-native-select-multiple";
 import { API_URL } from "@env";
-import { AuthContext } from "../context/AuthContext";
 
 const categories = [
-  { label: "Home and Kitchen Appliances", value: "Home and Kitchen Appliances" },
+  {
+    label: "Home and Kitchen Appliances",
+    value: "Home and Kitchen Appliances",
+  },
   { label: "Furniture", value: "Furniture" },
   { label: "Electronics and Gadgets", value: "Electronics and Gadgets" },
-  { label: "Outdoor and Sports Equipment", value: "Outdoor and Sports Equipment" },
+  {
+    label: "Outdoor and Sports Equipment",
+    value: "Outdoor and Sports Equipment",
+  },
   { label: "Event and Party Supplies", value: "Event and Party Supplies" },
   { label: "Baby and Kids Items", value: "Baby and Kids Items" },
   { label: "Tools and Equipment", value: "Tools and Equipment" },
@@ -57,7 +62,44 @@ const SignUp = () => {
     });
   };
 
+  const validateForm = () => {
+    const { username, email, password, userType, interests } = form;
+
+    if (!username.trim()) {
+      Alert.alert("Validation Error", "Username cannot be empty.");
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      Alert.alert("Validation Error", "Please enter a valid email address.");
+      return false;
+    }
+
+    if (password.length < 5) {
+      Alert.alert(
+        "Validation Error",
+        "Password must be at least 5 characters long."
+      );
+      return false;
+    }
+
+    if (!userType) {
+      Alert.alert("Validation Error", "Please select a user type.");
+      return false;
+    }
+
+    if (interests.length === 0) {
+      Alert.alert("Validation Error", "Please select at least one interest.");
+      return false;
+    }
+
+    return true;
+  };
+
   const submit = async () => {
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
     try {
       const response = await axios.post(`${API_URL}/api/users/signup/`, {
@@ -69,7 +111,10 @@ const SignUp = () => {
       });
 
       if (response.status === 201) {
-        Alert.alert("Success", "Sign-up successful! Please sign in to your account.");
+        Alert.alert(
+          "Success",
+          "Sign-up successful! Please sign in to your account."
+        );
         router.push("/sign-in"); // Redirect to sign-in page
       } else {
         Alert.alert("Error", "Something went wrong. Please try again.");
@@ -89,7 +134,11 @@ const SignUp = () => {
     <SafeAreaView className="bg-primary h-full">
       <ScrollView>
         <View className="items-center justify-center">
-          <Image source={logo} resizeMode="contain" className="w-[250px] h-[120px]" />
+          <Image
+            source={logo}
+            resizeMode="contain"
+            className="w-[250px] h-[120px]"
+          />
         </View>
         <View className="w-full justify-center min-h-[65vh] px-4 mb-3">
           <Text className="text-2xl text-white text-semibold mt-5 mb-3 font-psemibold ">
@@ -120,7 +169,9 @@ const SignUp = () => {
           />
 
           <View className="mt-4 mb-3">
-            <Text className="text-base text-gray-100 font-pmedium mb-2">User Type</Text>
+            <Text className="text-base text-gray-100 font-pmedium mb-2">
+              User Type
+            </Text>
             <View className="bg-black-100 border border-black-200 rounded-xl">
               <Picker
                 selectedValue={form.userType}
@@ -135,7 +186,9 @@ const SignUp = () => {
           </View>
 
           <View className="mt-4 mb-3">
-            <Text className="text-base text-gray-100 font-pmedium mb-2">Interests</Text>
+            <Text className="text-base text-gray-100 font-pmedium mb-2">
+              Interests
+            </Text>
             <View style={styles.multiSelectLabel}>
               <SelectMultiple
                 items={categories}
@@ -145,6 +198,7 @@ const SignUp = () => {
                 }))}
                 onSelectionsChange={handleInterestSelection}
                 style={styles.multiSelectLabel}
+                listProps={{ nestedScrollEnabled: true }} // Pass nestedScrollEnabled to the FlatList
               />
             </View>
           </View>
@@ -160,7 +214,10 @@ const SignUp = () => {
             <Text className="text-lg text-gray-100 font-pregular">
               Have an Account already?
             </Text>
-            <Link href="/sign-in" className="text-lg font-psemibold text-secondary">
+            <Link
+              href="/sign-in"
+              className="text-lg font-psemibold text-secondary"
+            >
               Sign In
             </Link>
           </View>
