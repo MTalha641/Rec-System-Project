@@ -16,7 +16,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Security settings
 SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh'
 DEBUG = True
-ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1']
+ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1','192.168.43.223','192.168.18.199','192.168.18.254',"*"]
 
 # Application definition
 INSTALLED_APPS = [
@@ -102,15 +102,6 @@ USE_TZ = True
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://192.168.0.124:8001',
-    'http://localhost:8000',
-]
-
-ALLOWED_HOSTS = [
-    '192.168.0.124',
-    'localhost' 
-]
 
 # Static and media files settings
 STATIC_URL = 'static/'

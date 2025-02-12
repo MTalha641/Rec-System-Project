@@ -24,26 +24,15 @@ import Fontisto from "react-native-vector-icons/Fontisto";
 
 const { width } = Dimensions.get("window");
 
-const ProductDetails = () => {
+const ProductDetails = (product) => {
   const router = useRouter();
+  console.log(product);
   const [userEmail] = useState("dummyuser@example.com");
   const [displayPrice, setDisplayPrice] = useState(100); // Default price
   const [isSaved, setIsSaved] = useState(false);
 
   // Dummy product data
-  const product = {
-    productID: "123",
-    title: "Product Name",
-    description: "This is a sample product description.",
-    price: 100,
-    rating: 4.5,
-    totalReviews: 10,
-    imageIds: ["https://dummyimage.com/640x360/fff/aaa"],
-    latitude: 25.053109,
-    longitude: 67.121006,
-    timeStamp: new Date(),
-    email: "renter@example.com"
-  };
+  
   const data = product.imageIds;
   const [buttonGroup, setButtonGroup] = useState("");
   

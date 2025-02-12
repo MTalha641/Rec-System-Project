@@ -8,7 +8,7 @@ const ProductCard = ({ product }) => {
 
   const handlePress = () => {
     router.push({
-      pathname: "/ProductDetails",
+      pathname: `/product/${product.id}`,
       params: { product },
     });
   };

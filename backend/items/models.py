@@ -6,7 +6,8 @@ class Item(models.Model):
     rentee = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=255)
     price = models.IntegerField()  # Changed to IntegerField
-    location = models.CharField(max_length=255)
+    location = models.CharField(max_length=255) #pinpoint co-ordinates
+    address = models.CharField(max_length=255,default='') # street and detailed string address
     category = models.CharField(max_length=255)
     sub_category = models.CharField(max_length=255)
     image = models.ImageField(upload_to="items/")
