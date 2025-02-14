@@ -16,7 +16,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Security settings
 SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh'
 DEBUG = True
-ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1','192.168.43.223','192.168.18.199','192.168.18.254',"*"]
+ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', '192.168.100.15' 'localhost','192.168.174.1','192.168.43.223','192.168.18.199','192.168.18.254',"*"]
 
 # Application definition
 INSTALLED_APPS = [

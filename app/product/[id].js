@@ -124,7 +124,7 @@ const ProductDetails = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#475FCB" />
+        <ActivityIndicator size="large" color="#ffffff" />
       </SafeAreaView>
     );
   }
@@ -184,8 +184,6 @@ const ProductDetails = () => {
 
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
-
-          <Text style={styles.sectionTitle}>Location</Text>
           <MapView
             style={styles.map}
             region={{
@@ -236,12 +234,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   categoryText: {
-    color: '#808080',
+    color: '#ffffff',
     fontSize: 14,
   },
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#161622',
   },
   loadingContainer: {
     flex: 1,
@@ -302,11 +300,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   dateContainer: {
     flexDirection: 'row',
-    marginVertical: 10,
+    marginVertical: 2,
     alignItems: 'center',
   },
   dateText: {
@@ -318,12 +316,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
-    marginVertical: 12,
+    marginVertical: 7,
   },
   description: {
     fontSize: 14,
     color: 'white',
     lineHeight: 20,
+    marginBottom: 10
   },
   map: {
     height: 200,
@@ -331,7 +330,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   bottomBar: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#1E1E2D',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 20,

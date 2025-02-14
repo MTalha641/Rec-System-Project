@@ -38,6 +38,8 @@ const RootLayout = () => {
       {/* <Stack.Screen name="ProductDetails/[id]" options={{ headerShown: false }} /> */}
       <Stack.Screen name="ReserveProduct" options={{ headerShown: false }} />
       <Stack.Screen name="product/[id]" options={{headerShown:false}} />
+      <Stack.Screen name="Paymentgateway" options={{ headerShown: false }} />
+      <Stack.Screen name="Riderscreen" options={{ headerShown: false }} />
     </Stack>
   </AuthProvider>
   
