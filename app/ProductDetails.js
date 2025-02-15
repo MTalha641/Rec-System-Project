@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   FlatList,
@@ -10,7 +10,7 @@ import {
   Button,
   Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
 import Fontisto from "react-native-vector-icons/Fontisto";
 import moment from "moment";
@@ -26,20 +26,39 @@ const ProductDetails = () => {
   const [userEmail] = useState("dummyuser@example.com");
   const [displayPrice, setDisplayPrice] = useState(100);
   const [isSaved, setIsSaved] = useState(false);
+  const {id} = useLocalSearchParams();
+  const [product,setProduct] = useState(null);
 
-  const product = {
-    productID: "123",
-    title: "Table Tennis Racquet",
-    description: "This is a sample product description.",
-    price: 100,
-    rating: 4.5,
-    totalReviews: 10,
-    imageIds: [racquet],
-    latitude: 25.053109,
-    longitude: 67.121006,
-    timeStamp: new Date(),
-    email: "renter@example.com",
-  };
+
+  useEffect(() => {
+    const fetchProductDetails = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/items/get/${id}`);
+        setProduct(response.data);
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        Alert.alert('Error', 'Failed to load product details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductDetails();
+  }, [id]);
+  
+  // const product = {
+  //   productID: "123",
+  //   title: "Table Tennis Racquet",
+  //   description: "This is a sample product description.",
+  //   price: 100,
+  //   rating: 4.5,
+  //   totalReviews: 10,
+  //   imageIds: [racquet],
+  //   latitude: 25.053109,
+  //   longitude: 67.121006,
+  //   timeStamp: new Date(),
+  //   email: "renter@example.com",
+  // };
   const data = product.imageIds;
 
   const handleSaveProduct = () => {

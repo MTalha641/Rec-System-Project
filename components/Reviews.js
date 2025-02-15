@@ -65,11 +65,13 @@ const Reviews = () => {
 
 const styles = StyleSheet.create({
   reviewContainer: {
-    backgroundColor: "white",
+    backgroundColor: "#1E1E2D",
     padding: 10,
     maxWidth: 300,
     marginRight: 10,
     borderRadius: 10,
+    marginBottom: 20
+
   },
   avatarContainer: {
     width: 40,
@@ -80,24 +82,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarText: {
-    color: "black",
+    color: "white",
     fontSize: 16,
     fontWeight: "bold",
+    alignItems: "flex-start",
+    justifyContent: "flex-start"
   },
   infoContainer: {
     marginLeft: 8,
     flexDirection: "column",
+    color:"white",
+     alignItems: "flex-start",
+    justifyContent: "flex-start"
   },
   nameText: {
     fontSize: 16,
+    color: "white"
   },
   commentText: {
     marginTop: 5,
+    color: "white"
   },
   noReviewsText: {
     alignSelf: "center",
     fontSize: 16,
-    color: "grey",
+    color: "white",
   },
 });
 

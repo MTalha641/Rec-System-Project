@@ -18,15 +18,15 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()  # Or use 'email' if you prefer
+    email = serializers.CharField()  # Or use 'email' if you prefer
     password = serializers.CharField()
 
     def validate(self, attrs):
-        username = attrs.get('username')
+        email = attrs.get('email')
         password = attrs.get('password')
 
         try:
-            user = User.objects.get(username=username)  # Change to .get(email=email) if using email for login
+            user = User.objects.get(email=email)  # Change to .get(email=email) if using email for login
         except User.DoesNotExist:
             raise serializers.ValidationError("User not found.")
 

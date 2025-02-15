@@ -87,7 +87,7 @@ const ReserveProduct = () => {
     setTimeout(() => {
       setIsLoading(false);
       Alert.alert("Success", "Product Reserved Successfully", [
-        { text: "OK", onPress: () => router.push("/home") }, // Navigate to home.js
+        { text: "OK", onPress: () => router.push("/Paymentgateway") }, // Navigate to PaymentGateway.js
       ]);
     }, 1500);
   };
