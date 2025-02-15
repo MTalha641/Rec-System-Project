@@ -13,6 +13,7 @@ class Item(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     temporary_field1 = models.BooleanField(default=True)
+    is_rented = models.BooleanField(default=False) 
 
     def __str__(self):
         return self.title
