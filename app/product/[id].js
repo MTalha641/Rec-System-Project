@@ -45,30 +45,37 @@ const ProductDetails = () => {
 
   useEffect(() => {
     const fetchProductDetails = async () => {
+      if (!token) {
+        console.warn("Token is missing, skipping fetch");
+        return;
+      }
+  
       try {
         setLoading(true);
         setError(null);
-        const response = await axios.get(`${API_URL}/api/items/get/${id}`,{
-            headers:{
-                Authorization:`Bearer ${token}`,
-            }
+        console.log("Fetching with Token:", token); // Debugging token
+  
+        const response = await axios.get(`${API_URL}/api/items/get/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
+  
         setProduct(response.data);
         setDisplayPrice(response.data.price); // Set initial price
       } catch (error) {
-        const errorMessage = error?.message || 'Failed to load product details';
+        const errorMessage = error?.message || "Failed to load product details";
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        Alert.alert("Error", errorMessage);
       } finally {
         setLoading(false);
       }
     };
-
+  
     if (id) {
       fetchProductDetails();
     }
-  }, [id]);
+  }, [id, token]); 
 
+  
   const calculatePrice = (period) => {
     if (!product) return 0;
     const basePrice = product.price;
