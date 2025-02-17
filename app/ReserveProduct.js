@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -14,14 +14,21 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router"; // Import useRouter for navigation
+import { useRouter, useLocalSearchParams } from "expo-router"; // Import for navigation and params
 import moment from "moment";
+import axios from "axios";
+import AuthContext from "./context/AuthContext"; // Import authentication context
 import racquet from "../assets/images/racquet.jpg"; // Existing image
 import dummyImage1 from "../assets/images/racquet.jpg"; // Dummy images
 import dummyImage2 from "../assets/images/racquet.jpg";
 import dummyImage3 from "../assets/images/racquet.jpg";
+import {API_URL} from "@env";
 
 const ReserveProduct = () => {
+  const { id } = useLocalSearchParams();  // ✅ Get item_id from URL params
+  const { token } = useContext(AuthContext);  // ✅ Get auth token from context
+  const router = useRouter(); // Initialize router for navigation
+
   const product = {
     title: "Sample Product",
     displayPrice: 1500,
@@ -30,7 +37,6 @@ const ReserveProduct = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRange, setSelectedRange] = useState({});
-  const router = useRouter(); // Initialize router for navigation
 
   const handleDateSelection = (day) => {
     if (!selectedRange.startDate) {
@@ -77,19 +83,43 @@ const ReserveProduct = () => {
     return markedDates;
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!selectedRange.startDate || !selectedRange.endDate) {
-      return Alert.alert("Empty fields", "Please fill all fields.");
+      return Alert.alert("Error", "Please select both start and end dates.");
     }
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    // Calculate total days and total price
+    const totalDays = moment(selectedRange.endDate).diff(selectedRange.startDate, "days") + 1;
+    const totalPrice = product.displayPrice * totalDays;
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/bookings/confirm/`, 
+        {
+          item_id: id, 
+          start_date: selectedRange.startDate,
+          end_date: selectedRange.endDate,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, 
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("Booking successful:", response.data);
       Alert.alert("Success", "Product Reserved Successfully", [
-        { text: "OK", onPress: () => router.push("/Paymentgateway") }, // Navigate to PaymentGateway.js
+        { text: "OK", onPress: () => router.push("/Paymentgateway") },  // ✅ Navigate to PaymentGateway after booking
       ]);
-    }, 1500);
+    } catch (error) {
+      console.error("Booking error:", error.response?.data || error.message);
+      Alert.alert("Error", error.response?.data?.message || "Failed to book item. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -114,14 +144,9 @@ const ReserveProduct = () => {
             )}
           />
 
-          <Text style={styles.productTitle}>
-            {product.title.length > 30
-              ? product.title.slice(0, 30) + "..."
-              : product.title}
-          </Text>
+          <Text style={styles.productTitle}>{product.title}</Text>
           <Text style={styles.productPrice}>
-            PKR {product.displayPrice}
-            <Text style={styles.pricePerDay}> /day</Text>
+            PKR {product.displayPrice} <Text style={styles.pricePerDay}>/day</Text>
           </Text>
 
           {/* Date Picker */}
@@ -150,56 +175,10 @@ const ReserveProduct = () => {
             </View>
           </View>
 
-          {/* Price Details */}
-          <View style={styles.priceDetailsContainer}>
-            <Text style={styles.sectionTitle}>Price Details</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Total days</Text>
-              {selectedRange.endDate ? (
-                <Text style={styles.priceValue}>
-                  {moment(selectedRange.endDate).diff(
-                    selectedRange.startDate,
-                    "days"
-                  )}
-                </Text>
-              ) : (
-                <Text style={styles.errorText}>Please select dates</Text>
-              )}
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Price per day</Text>
-              <Text style={styles.priceValue}>{product.displayPrice}</Text>
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Service fee</Text>
-              <Text style={styles.priceValue}>
-                {Math.floor(product.displayPrice * 0.1)}
-              </Text>
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                PKR{" "}
-                {selectedRange.endDate
-                  ? Math.floor(
-                      product.displayPrice * 0.1 +
-                        product.displayPrice *
-                          moment(selectedRange.endDate).diff(
-                            selectedRange.startDate,
-                            "days"
-                          )
-                    )
-                  : Math.floor(
-                      product.displayPrice * 0.1 + product.displayPrice
-                    )}
-              </Text>
-            </View>
-          </View>
-
           {/* Confirm Button */}
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={handleConfirmPayment}
+            onPress={handleConfirmPayment}  // ✅ Call API before navigating
             disabled={isLoading}
           >
             {isLoading ? (
@@ -241,54 +220,6 @@ const styles = StyleSheet.create({
     color: "#2a9d8f",
     marginBottom: 16,
   },
-  pricePerDay: {
-    fontSize: 19,
-    color: "#CDCDE0",
-  },
-  datePickerContainer: {
-    marginBottom: 16,
-  },
-  calendarContainer: {
-    backgroundColor: "#1E1E2D",
-    borderRadius: 20,
-    padding: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#CDCDE0",
-  },
-  priceDetailsContainer: {
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: "#1E1E2D",
-  },
-  priceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: "#CDCDE0",
-  },
-  priceValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#CDCDE0",
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#CDCDE0",
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2a9d8f",
-  },
   confirmButton: {
     backgroundColor: "#2a9d8f",
     borderRadius: 10,
@@ -300,10 +231,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  errorText: {
-    color: "red",
-    fontSize: 14,
   },
 });
 
