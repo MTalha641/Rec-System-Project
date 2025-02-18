@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -14,35 +14,44 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router"; // Import useRouter for navigation
+import { useRouter, useLocalSearchParams } from "expo-router";
 import moment from "moment";
-import racquet from "../assets/images/racquet.jpg"; // Existing image
-import dummyImage1 from "../assets/images/racquet.jpg"; // Dummy images
+import axios from "axios";
+import AuthContext from "./context/AuthContext";
+import racquet from "../assets/images/racquet.jpg";
+import dummyImage1 from "../assets/images/racquet.jpg";
 import dummyImage2 from "../assets/images/racquet.jpg";
 import dummyImage3 from "../assets/images/racquet.jpg";
+import { API_URL } from "@env";
 
 const ReserveProduct = () => {
+  const {productId} = useLocalSearchParams();
+  console.log("Item ID from params:", productId);
+
+  const { token } = useContext(AuthContext);
+  console.log("Auth Token:", token);
+
+  const router = useRouter();
+
   const product = {
     title: "Sample Product",
     displayPrice: 1500,
-    imageids: [racquet, dummyImage1, dummyImage2, dummyImage3], // Add multiple images
+    imageids: [racquet, dummyImage1, dummyImage2, dummyImage3],
   };
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRange, setSelectedRange] = useState({});
-  const router = useRouter(); // Initialize router for navigation
 
   const handleDateSelection = (day) => {
+    console.log("Selected Date:", day.dateString);
     if (!selectedRange.startDate) {
       setSelectedRange({ startDate: day.dateString });
     } else if (!selectedRange.endDate) {
-      setSelectedRange((prev) => ({
-        ...prev,
-        endDate: day.dateString,
-      }));
+      setSelectedRange((prev) => ({ ...prev, endDate: day.dateString }));
     } else {
       setSelectedRange({ startDate: day.dateString });
     }
+    console.log("Updated Date Range:", selectedRange);
   };
 
   const generateMarkedDates = () => {
@@ -60,14 +69,9 @@ const ReserveProduct = () => {
         color: "#2a9d8f",
         textColor: "white",
       };
-
       const start = moment(selectedRange.startDate);
       const end = moment(selectedRange.endDate);
-      for (
-        let m = start.clone().add(1, "day");
-        m.isBefore(end, "day");
-        m.add(1, "day")
-      ) {
+      for (let m = start.clone().add(1, "day"); m.isBefore(end, "day"); m.add(1, "day")) {
         markedDates[m.format("YYYY-MM-DD")] = {
           color: "#88d8b0",
           textColor: "white",
@@ -77,54 +81,61 @@ const ReserveProduct = () => {
     return markedDates;
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!selectedRange.startDate || !selectedRange.endDate) {
-      return Alert.alert("Empty fields", "Please fill all fields.");
+      return Alert.alert("Error", "Please select both start and end dates.");
     }
 
     setIsLoading(true);
+    const totalDays = moment(selectedRange.endDate).diff(selectedRange.startDate, "days") + 1;
+    const totalPrice = product.displayPrice * totalDays;
 
-    setTimeout(() => {
-      setIsLoading(false);
+    console.log("Booking request data:", {
+      item_id: productId,
+      start_date: selectedRange.startDate,
+      end_date: selectedRange.endDate,
+    });
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/bookings/confirm/`,
+        {
+          item_id:productId,
+          start_date: selectedRange.startDate,
+          end_date: selectedRange.endDate,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Booking successful:", response.data);
       Alert.alert("Success", "Product Reserved Successfully", [
-        { text: "OK", onPress: () => router.push("/Paymentgateway") }, // Navigate to PaymentGateway.js
+        { text: "OK", onPress: () => router.push("/Paymentgateway") },
       ]);
-    }, 1500);
+    } catch (error) {
+      console.error("Booking error:", error.response?.data || error.message);
+      Alert.alert("Error", error.response?.data?.message || "Failed to book item. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView className="flex-1" style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Image Slider */}
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <FlatList
             data={product.imageids}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <Image
-                source={item}
-                style={styles.productImage}
-                resizeMode="center"
-              />
-            )}
+            renderItem={({ item }) => <Image source={item} style={styles.productImage} resizeMode="center" />}
           />
-
-          <Text style={styles.productTitle}>
-            {product.title.length > 30
-              ? product.title.slice(0, 30) + "..."
-              : product.title}
-          </Text>
-          <Text style={styles.productPrice}>
-            PKR {product.displayPrice}
-            <Text style={styles.pricePerDay}> /day</Text>
-          </Text>
-
-          {/* Date Picker */}
+          <Text style={styles.productTitle}>{product.title}</Text>
+          <Text style={styles.productPrice}>PKR {product.displayPrice} <Text style={styles.pricePerDay}>/day</Text></Text>
           <View style={styles.datePickerContainer}>
             <Text style={styles.sectionTitle}>Select Dates</Text>
             <View style={styles.calendarContainer}>
@@ -149,64 +160,8 @@ const ReserveProduct = () => {
               />
             </View>
           </View>
-
-          {/* Price Details */}
-          <View style={styles.priceDetailsContainer}>
-            <Text style={styles.sectionTitle}>Price Details</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Total days</Text>
-              {selectedRange.endDate ? (
-                <Text style={styles.priceValue}>
-                  {moment(selectedRange.endDate).diff(
-                    selectedRange.startDate,
-                    "days"
-                  )}
-                </Text>
-              ) : (
-                <Text style={styles.errorText}>Please select dates</Text>
-              )}
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Price per day</Text>
-              <Text style={styles.priceValue}>{product.displayPrice}</Text>
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Service fee</Text>
-              <Text style={styles.priceValue}>
-                {Math.floor(product.displayPrice * 0.1)}
-              </Text>
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                PKR{" "}
-                {selectedRange.endDate
-                  ? Math.floor(
-                      product.displayPrice * 0.1 +
-                        product.displayPrice *
-                          moment(selectedRange.endDate).diff(
-                            selectedRange.startDate,
-                            "days"
-                          )
-                    )
-                  : Math.floor(
-                      product.displayPrice * 0.1 + product.displayPrice
-                    )}
-              </Text>
-            </View>
-          </View>
-
-          {/* Confirm Button */}
-          <TouchableOpacity
-            style={styles.confirmButton}
-            onPress={handleConfirmPayment}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.confirmButtonText}>Confirm and Pay</Text>
-            )}
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment} disabled={isLoading}>
+            {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.confirmButtonText}>Confirm and Pay</Text>}
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -215,96 +170,13 @@ const ReserveProduct = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#161622",
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  productImage: {
-    width: 300,
-    height: 200,
-    borderRadius: 20,
-    marginRight: 20,
-    marginLeft: 10,
-  },
-  productTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#CDCDE0",
-    marginBottom: 8,
-    marginTop: 25,
-  },
-  productPrice: {
-    fontSize: 20,
-    color: "#2a9d8f",
-    marginBottom: 16,
-  },
-  pricePerDay: {
-    fontSize: 19,
-    color: "#CDCDE0",
-  },
-  datePickerContainer: {
-    marginBottom: 16,
-  },
-  calendarContainer: {
-    backgroundColor: "#1E1E2D",
-    borderRadius: 20,
-    padding: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#CDCDE0",
-  },
-  priceDetailsContainer: {
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: "#1E1E2D",
-  },
-  priceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: "#CDCDE0",
-  },
-  priceValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#CDCDE0",
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#CDCDE0",
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2a9d8f",
-  },
-  confirmButton: {
-    backgroundColor: "#2a9d8f",
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  confirmButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  errorText: {
-    color: "red",
-    fontSize: 14,
-  },
+  container: { flex: 1, backgroundColor: "#161622" },
+  scrollContent: { padding: 16 },
+  productImage: { width: 300, height: 200, borderRadius: 20, marginRight: 20, marginLeft: 10 },
+  productTitle: { fontSize: 28, fontWeight: "bold", color: "#CDCDE0", marginBottom: 8, marginTop: 25 },
+  productPrice: { fontSize: 20, color: "#2a9d8f", marginBottom: 16 },
+  confirmButton: { backgroundColor: "#2a9d8f", borderRadius: 10, paddingVertical: 12, alignItems: "center", marginTop: 16 },
+  confirmButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });
 
 export default ReserveProduct;

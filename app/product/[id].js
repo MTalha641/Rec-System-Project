@@ -49,6 +49,10 @@ const ProductDetails = () => {
         console.warn("Token is missing, skipping fetch");
         return;
       }
+      console.log("AuthContext token:", token);
+      console.log("API URL:", API_URL);
+      console.log("item id check in [id].js",id)
+
   
       try {
         setLoading(true);
