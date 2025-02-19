@@ -7,7 +7,7 @@ class Review(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
     review = models.TextField(null=True, blank=True) 
-    sentiment = models.CharField(max_length=10, null=True, blank=True)  # Positive/Neutral/Negative
+    overall_score = models.FloatField(null=True, blank=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
