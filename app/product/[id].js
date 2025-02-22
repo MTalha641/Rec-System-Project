@@ -49,6 +49,10 @@ const ProductDetails = () => {
         console.warn("Token is missing, skipping fetch");
         return;
       }
+      console.log("AuthContext token:", token);
+      console.log("API URL:", API_URL);
+      console.log("item id check in [id].js",id)
+
   
       try {
         setLoading(true);
@@ -163,16 +167,15 @@ const ProductDetails = () => {
             renderItem={renderImageItem}
           />
         </View>
-
+         
+        
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>
             <Text style={styles.title}>{product.title}</Text>
-            <TouchableOpacity onPress={handleSaveProduct}>
-              <FontAwesome
-                name={isSaved ? "heart" : "heart-o"}
-                size={24}
-                color="white"
-              />
+            <TouchableOpacity className="bg-[#475FCB] py-2 px-4 rounded-lg self-start"
+             onPress={() => router.push('ProductReview')}
+            >
+                <Text className="text-white font-bold">Give Review</Text>
             </TouchableOpacity>
           </View>
 
@@ -191,6 +194,14 @@ const ProductDetails = () => {
 
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
+          <View/>
+          <View style={{flexDirection: "row"}}>
+          <Text style={styles.sectionTitle}>AI Rating - </Text>
+          <View className="bg-black-100" style={{paddingVertical: 3, paddingHorizontal: 7, borderRadius: 5 }}>
+              <Text style={{color: "white", fontSize: 22 }}>★ 4.5</Text>
+            </View>
+          </View>
+          <View>
           <MapView
             style={styles.map}
             region={{
@@ -204,9 +215,11 @@ const ProductDetails = () => {
               title={product.title}
             />
           </MapView>
-
+          </View>
+          <View>
           <Text style={styles.sectionTitle}>Rating and Reviews</Text>
           <Review />
+        </View>
         </View>
       </ScrollView>
 
@@ -335,6 +348,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 10,
     marginBottom: 20,
+    marginTop: 10
   },
   bottomBar: {
     backgroundColor: '#1E1E2D',

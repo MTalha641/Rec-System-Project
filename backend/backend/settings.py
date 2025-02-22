@@ -16,7 +16,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Security settings
 SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh'
 DEBUG = True
+<<<<<<< HEAD
 ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1','*']
+=======
+ALLOWED_HOSTS = ['192.168.18.6', '192.168.137.221', '192.168.100.15', '192.168.0.124', 'localhost','192.168.174.1','*']
+>>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
 
 # Application definition
 INSTALLED_APPS = [
@@ -103,10 +107,15 @@ USE_TZ = True
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
+<<<<<<< HEAD
     'http://192.168.100.15:8000',
     'http://localhost:8000',
     'http://10.206.70.1:8000'
 
+=======
+    'http://192.168.100.15:8001',
+    'http://localhost:8000',
+>>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
 ]
 
 # Static and media files settings
@@ -117,8 +126,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # JWT settings for SimpleJWT
 SIMPLE_JWT = {
+<<<<<<< HEAD
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+=======
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+>>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',

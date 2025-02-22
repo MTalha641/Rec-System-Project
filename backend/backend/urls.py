@@ -25,6 +25,10 @@ urlpatterns = [
     path('api/items/',include('items.urls')),
     path('api/recommendations/', include('recommendations.urls')),
     path('api/bookings/',include('bookings.urls')),
+<<<<<<< HEAD
+=======
+    path('api/reviews/',include('reviews.urls')),
+>>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
 
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
