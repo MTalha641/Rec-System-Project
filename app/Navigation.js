@@ -161,17 +161,6 @@ const Navigation = () => {
         //   }}
         // />
 
-        <Stack.Screen
-          name="ProductDetails"
-          component={ProductDetails}
-          options={{
-            headerShadowVisible: false,
-            gestureEnabled: false,
-            headerBackTitleVisible: true,
-            headerTitle: "ProductDetails",
-          }}
-        />
-
         // <Stack.Screen
         //   name="uploadFirst"
         //   component={UploadFirst}

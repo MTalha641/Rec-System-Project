@@ -195,6 +195,12 @@ const ProductDetails = () => {
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
           <View/>
+          <View style={{flexDirection: "row"}}>
+          <Text style={styles.sectionTitle}>AI Rating - </Text>
+          <View className="bg-black-100" style={{paddingVertical: 3, paddingHorizontal: 7, borderRadius: 5 }}>
+              <Text style={{color: "white", fontSize: 22 }}>★ 4.5</Text>
+            </View>
+          </View>
           <View>
           <MapView
             style={styles.map}
@@ -303,7 +309,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    borderColor: "red"
   },
   headerContainer: {
     marginTop: 10,
@@ -343,6 +348,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 10,
     marginBottom: 20,
+    marginTop: 10
   },
   bottomBar: {
     backgroundColor: '#1E1E2D',
