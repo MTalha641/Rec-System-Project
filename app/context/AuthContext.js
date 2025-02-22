@@ -1,157 +1,198 @@
-import React, { createContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env';
-import { router } from 'expo-router';
-import axios from 'axios';
+import React, { createContext, useState, useEffect, useReducer } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "@env";
+import { router } from "expo-router";
+import axios from "axios";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(null); // Access token
-  const [refreshToken, setRefreshToken] = useState(null); // Refresh token
+  const [token, setToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // To handle loading state
+  const [loading, setLoading] = useState(true);
 
-  // Utility function to check if the token is expired
   const isTokenExpired = (token) => {
-    const payload = JSON.parse(atob(token.split('.')[1])); // Decode JWT
-    const expirationTime = payload.exp * 1000; // exp is in seconds, convert to ms
-    return Date.now() > expirationTime;
+    if (!token) return true;
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(atob(base64));
+      return Date.now() >= payload.exp * 1000;
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      return true;
+    }
   };
 
-  // Fetch stored tokens on app load
   useEffect(() => {
-    const fetchTokens = async () => {
+    console.log("🔄 AuthProvider: initializing auth state");
+    const initializeAuth = async () => {
+      console.log("🔍 AuthProvider: checking for stored tokens");
       try {
-        const storedToken = await AsyncStorage.getItem('accessToken');
-        const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
+        const storedToken = await AsyncStorage.getItem("accessToken");
+        const storedRefreshToken = await AsyncStorage.getItem("refreshToken");
+
+        console.log("🔍 Stored Access Token:", storedToken ? "Found" : "Not found");
+        console.log("🔍 Stored Refresh Token:", storedRefreshToken ? "Found" : "Not found");
 
         if (storedToken) {
+          console.log("💾 AuthProvider: setting token from storage");
           setToken(storedToken);
         }
         if (storedRefreshToken) {
+          console.log("💾 AuthProvider: setting refresh token from storage");
           setRefreshToken(storedRefreshToken);
         }
 
         if (storedToken && !isTokenExpired(storedToken)) {
+          console.log("✅ AuthProvider: token is valid, fetching user details");
           await fetchUserDetails(storedToken);
+        } else if (storedRefreshToken) {
+          console.warn("⚠️ AuthProvider: Access token expired. Attempting to refresh...");
+          await refreshAccessToken(storedRefreshToken);
         } else {
-          console.warn('Access token expired or missing. Attempting to refresh...');
-          await refreshAccessToken();
+          console.warn("⚠️ AuthProvider: No valid token found. Redirecting to login.");
+          logout();
         }
       } catch (error) {
-        console.error('Failed to fetch tokens from storage:', error);
+        console.error("❌ AuthProvider: Failed to fetch tokens:", error);
       } finally {
-        setLoading(false); // Set loading to false once token fetching is complete
+        console.log("✅ AuthProvider: Auth initialization complete");
+        setLoading(false);
       }
     };
 
-    fetchTokens();
+    initializeAuth();
   }, []);
 
-  // Fetch user details using access token
   const fetchUserDetails = async (currentToken) => {
     if (!currentToken) {
-      console.warn('No access token found, unable to fetch user details.');
+      console.warn("⚠️ AuthProvider: No access token found, unable to fetch user details.");
       return;
     }
 
     try {
+      console.log("🔍 AuthProvider: Fetching user details with token");
       const response = await axios.get(`${API_URL}/api/users/getuserdetails/`, {
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-        },
+        headers: { Authorization: `Bearer ${currentToken}` },
       });
+
+      console.log("✅ AuthProvider: User details fetched successfully");
 
       setUser({
         username: response.data.username,
         email: response.data.email,
-        avatar: response.data.avatar || 'https://placekitten.com/200/200',
+        avatar: response.data.avatar || "https://placekitten.com/200/200",
       });
     } catch (error) {
       if (error.response?.status === 401) {
-        console.warn('Access token expired. Attempting to refresh...');
+        console.warn("⚠️ AuthProvider: Access token expired during user fetch. Attempting to refresh...");
         await refreshAccessToken();
       } else {
-        console.error('Error fetching user details:', error.response?.data || error.message);
+        console.error("❌ AuthProvider: Error fetching user details:", error.response?.data || error.message);
       }
     }
   };
 
-  // Refresh the access token if it has expired
   const refreshAccessToken = async () => {
     if (!refreshToken) {
-      console.warn('No refresh token available. Redirecting to login.');
+      console.warn("⚠️ AuthProvider: No refresh token available. Redirecting to login.");
       logout();
       return;
     }
 
     try {
+      console.log("🔄 AuthProvider: Attempting to refresh access token");
       const response = await axios.post(
         `${API_URL}/api/users/token/refresh/`,
         { refresh: refreshToken },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { "Content-Type": "application/json" } }
       );
 
       const newAccessToken = response.data.access;
-      setToken(newAccessToken);
-      await AsyncStorage.setItem('accessToken', newAccessToken);
+      console.log("✅ AuthProvider: Access token successfully refreshed");
 
-      // Retry fetching user details after refreshing token
+      setToken(newAccessToken);
+      await AsyncStorage.setItem("accessToken", newAccessToken);
+      console.log("💾 AuthProvider: New access token saved to storage");
       await fetchUserDetails(newAccessToken);
     } catch (error) {
-      console.error('Failed to refresh token:', error.response?.data || error.message);
+      console.error("❌ AuthProvider: Failed to refresh token:", error.response?.data || error.message);
       logout();
     }
   };
 
-  // Login and store tokens
   const login = async ({ access, refresh }) => {
     if (!access || !refresh) {
-      console.warn('Login response is missing access or refresh tokens.');
+      console.warn("❌ AuthProvider: Login response is missing access or refresh tokens.");
       return;
     }
 
     try {
-      await AsyncStorage.setItem('accessToken', access);
-      await AsyncStorage.setItem('refreshToken', refresh);
+      console.log("🔑 AuthProvider: Starting login process");
+      // First set loading to true to prevent premature access
+      setLoading(true);
+      
+      // Store tokens in AsyncStorage
+      console.log("💾 AuthProvider: Storing tokens in AsyncStorage");
+      await AsyncStorage.setItem("accessToken", access);
+      await AsyncStorage.setItem("refreshToken", refresh);
+      
+      // Update state
+      console.log("🔄 AuthProvider: Updating token state");
       setToken(access);
       setRefreshToken(refresh);
-
-      // Fetch user details after storing tokens
+      
+      // Fetch user details
+      console.log("🔍 AuthProvider: Fetching user details after login");
       await fetchUserDetails(access);
     } catch (error) {
-      console.error('Failed to store tokens during login:', error);
+      console.error("❌ AuthProvider: Failed to store tokens during login:", error);
+    } finally {
+      // Ensure loading is set to false when complete
+      console.log("✅ AuthProvider: Login process complete");
+      setLoading(false);
     }
   };
 
-  // Logout and clear tokens
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('refreshToken');
+      console.log("🚪 AuthProvider: Starting logout process");
+      // Set loading true during logout process
+      setLoading(true);
+      
+      // Clear AsyncStorage
+      console.log("🧹 AuthProvider: Clearing tokens from AsyncStorage");
+      await AsyncStorage.removeItem("accessToken");
+      await AsyncStorage.removeItem("refreshToken");
+      
+      // Clear state
+      console.log("🧹 AuthProvider: Clearing authentication state");
       setToken(null);
       setRefreshToken(null);
       setUser(null);
-      router.replace('/sign-in');
+      
+      // Navigate to sign-in
+      console.log("🔄 AuthProvider: Redirecting to sign-in page");
+      router.replace("/sign-in");
     } catch (error) {
-      console.error('Failed to remove tokens during logout:', error);
+      console.error("❌ AuthProvider: Failed to remove tokens during logout:", error);
+    } finally {
+      console.log("✅ AuthProvider: Logout process complete");
+      setLoading(false);
     }
   };
 
-  // Automatically fetch user details when token changes
-  useEffect(() => {
-    if (token && !isTokenExpired(token)) {
-      fetchUserDetails(token);
-    }
-  }, [token]);
+  console.log("🔍 AuthProvider: Current state -", { 
+    hasToken: !!token, 
+    hasRefreshToken: !!refreshToken, 
+    hasUser: !!user, 
+    isLoading: loading 
+  });
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, loading }}>
+    <AuthContext.Provider value={{ token, refreshToken, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

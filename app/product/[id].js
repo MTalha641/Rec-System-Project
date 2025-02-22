@@ -1,4 +1,4 @@
-import React, { useEffect, useState,useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   View,
   FlatList,
@@ -26,8 +26,10 @@ import AuthContext from "../context/AuthContext";
 const { width } = Dimensions.get("window");
 
 const ProductDetails = () => {
+  console.log("🔄 ProductDetails: Component initializing");
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  console.log(`🔍 ProductDetails: Product ID from params: ${id}`);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,7 +37,11 @@ const ProductDetails = () => {
   const [displayPrice, setDisplayPrice] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState('day');
   const [isSaved, setIsSaved] = useState(false);
-  const {token} = useContext(AuthContext);
+  const { token, loading: authLoading, user } = useContext(AuthContext);
+  
+  // Debug log for auth context
+  console.log(`🔍 ProductDetails: Auth state - token exists: ${!!token}, token length: ${token?.length || 0}, authLoading: ${authLoading}, user exists: ${!!user}`);
+  
   // Parse location string to get latitude and longitude
   const getLocationCoordinates = (locationString) => {
     if (!locationString) return { latitude: 0, longitude: 0 };
@@ -43,42 +49,74 @@ const ProductDetails = () => {
     return { latitude, longitude };
   };
 
-  useEffect(() => {
-    const fetchProductDetails = async () => {
-      if (!token) {
-        console.warn("Token is missing, skipping fetch");
-        return;
-      }
-      console.log("AuthContext token:", token);
-      console.log("API URL:", API_URL);
-      console.log("item id check in [id].js",id)
+  // Fix: Use a ref to track if we've already attempted to fetch
+  const [hasFetchAttempted, setHasFetchAttempted] = useState(false);
 
-  
+  // Fix: Separate effect to track token changes for debugging
+  useEffect(() => {
+    console.log(`🔄 ProductDetails: Token changed - hasToken: ${!!token}, length: ${token?.length || 0}`);
+  }, [token]);
+
+  useEffect(() => {
+    // Only proceed if we have an ID and haven't already attempted a fetch
+    if (!id || hasFetchAttempted) return;
+    
+    console.log(`🔄 ProductDetails: Effect triggered - authLoading: ${authLoading}, hasToken: ${!!token}, id: ${id}`);
+    
+    // Wait until auth is settled (either with or without token)
+    if (authLoading) {
+      console.log(`⏳ ProductDetails: Auth still loading, waiting...`);
+      return;
+    }
+    
+    // At this point, auth loading is complete - proceed with what we have
+    setHasFetchAttempted(true);
+    
+    // If no token is available after auth loading completes
+    if (!token) {
+      console.log(`⚠️ ProductDetails: Auth completed but no token available`);
+      setLoading(false);
+      setError("Authentication required. Please log in.");
+      return;
+    }
+    
+    console.log(`✅ ProductDetails: Auth ready and token available, proceeding to fetch product`);
+    
+    const fetchProductDetails = async () => {
+      console.log(`🔍 ProductDetails: Starting API fetch for product ${id}`);
       try {
         setLoading(true);
         setError(null);
-        console.log("Fetching with Token:", token); // Debugging token
-  
+        
+        // Fix: Add more token validation
+        if (!token || token.length < 10) {
+          throw new Error("Invalid authentication token");
+        }
+        
+        console.log(`🔍 ProductDetails: Sending request to ${API_URL}/api/items/get/${id}`);
+        console.log(`🔑 ProductDetails: Using token: ${token.substring(0, 10)}...`);
+        
         const response = await axios.get(`${API_URL}/api/items/get/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-  
+        
+        console.log(`✅ ProductDetails: API response received successfully`);
+        
         setProduct(response.data);
-        setDisplayPrice(response.data.price); // Set initial price
+        setDisplayPrice(response.data.price);
+        console.log(`💰 ProductDetails: Price set to ${response.data.price}`);
       } catch (error) {
-        const errorMessage = error?.message || "Failed to load product details";
-        setError(errorMessage);
-        Alert.alert("Error", errorMessage);
+        console.error(`❌ ProductDetails: API Fetch Error:`, error?.response?.data || error.message);
+        setError(error?.message || "Failed to load product details");
+        Alert.alert("Error", error?.message || "Failed to load product details");
       } finally {
+        console.log(`✅ ProductDetails: Fetch operation complete, setting loading to false`);
         setLoading(false);
       }
     };
-  
-    if (id) {
-      fetchProductDetails();
-    }
-  }, [id, token]); 
-
+    
+    fetchProductDetails();
+  }, [id, token, authLoading, hasFetchAttempted]);
   
   const calculatePrice = (period) => {
     if (!product) return 0;
@@ -92,25 +130,34 @@ const ProductDetails = () => {
   };
 
   const handlePeriodChange = (period) => {
+    console.log(`🔄 ProductDetails: Period changed to ${period}`);
     setSelectedPeriod(period);
-    setDisplayPrice(calculatePrice(period));
+    const newPrice = calculatePrice(period);
+    console.log(`💰 ProductDetails: New price calculated: ${newPrice}`);
+    setDisplayPrice(newPrice);
   };
 
   const handleSaveProduct = async () => {
     try {
+      console.log(`🔄 ProductDetails: Toggling saved state from ${isSaved} to ${!isSaved}`);
       setIsSaved(!isSaved);
       Alert.alert(
         "Success",
         isSaved ? "Product removed from saved!" : "Product saved!"
       );
     } catch (error) {
+      console.error(`❌ ProductDetails: Error saving product:`, error);
       Alert.alert("Error", "Failed to update saved status");
     }
   };
 
   const handleReserveProduct = () => {
-    if (!product) return;
+    if (!product) {
+      console.warn(`⚠️ ProductDetails: Cannot reserve - product is null`);
+      return;
+    }
     
+    console.log(`🔄 ProductDetails: Navigating to ReserveProduct with productId: ${product.id}`);
     router.push({
       pathname: "/ReserveProduct",
       params: {
@@ -132,25 +179,64 @@ const ProductDetails = () => {
     </View>
   );
 
-  if (loading) {
+  // Fix: Handle auth required state
+  if (!token && !authLoading && hasFetchAttempted) {
+    console.log(`🔒 ProductDetails: Authentication required`);
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ffffff" />
+      <SafeAreaView style={styles.errorContainer}>
+        <Text style={styles.errorText}>
+          Authentication required. Please log in to view product details.
+        </Text>
+        <Button 
+          title="Go to Login" 
+          onPress={() => router.push('/login')} 
+          color="#475FCB"
+        />
       </SafeAreaView>
     );
   }
 
-  if (error || !product) {
+  // Render decisions with logging
+  if (authLoading) {
+    console.log(`⏳ ProductDetails: Showing loading state - auth is still loading`);
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={styles.loadingText}>Authenticating...</Text>
+      </SafeAreaView>
+    );
+  }
+  
+  if (loading && !error) {
+    console.log(`⏳ ProductDetails: Showing loading state - product fetch in progress`);
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={styles.loadingText}>Loading product...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || (!product && !loading)) {
+    console.log(`❌ ProductDetails: Showing error state - ${error || 'Product not found'}`);
     return (
       <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>
           {error || 'Product not found'}
         </Text>
-        <Button title="Retry" onPress={() => router.back()} />
+        <Button title="Go Back" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
 
+  // Only render the product when we have it
+  if (!product) {
+    console.log(`⚠️ ProductDetails: Product is null but no error/loading state - returning null`);
+    return null;
+  }
+
+  console.log(`✅ ProductDetails: Rendering product view for ${product.title}`);
+  
   // Get coordinates for the map
   const coordinates = getLocationCoordinates(product.location);
 
@@ -167,16 +253,17 @@ const ProductDetails = () => {
             renderItem={renderImageItem}
           />
         </View>
-
+         
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>
             <Text style={styles.title}>{product.title}</Text>
-            <TouchableOpacity onPress={handleSaveProduct}>
-              <FontAwesome
-                name={isSaved ? "heart" : "heart-o"}
-                size={24}
-                color="white"
-              />
+            <TouchableOpacity className="bg-[#475FCB] py-2 px-4 rounded-lg self-start"
+             onPress={() => {
+               console.log(`🔄 ProductDetails: Navigating to ProductReview`);
+               router.push('ProductReview');
+             }}
+            >
+                <Text className="text-white font-bold">Give Review</Text>
             </TouchableOpacity>
           </View>
 
@@ -195,6 +282,8 @@ const ProductDetails = () => {
 
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
+          <View style={{height: 10}} />
+          <View>
           <MapView
             style={styles.map}
             region={{
@@ -208,9 +297,11 @@ const ProductDetails = () => {
               title={product.title}
             />
           </MapView>
-
+          </View>
+          <View>
           <Text style={styles.sectionTitle}>Rating and Reviews</Text>
           <Review />
+        </View>
         </View>
       </ScrollView>
 
@@ -239,7 +330,6 @@ const ProductDetails = () => {
 };
 
 const styles = StyleSheet.create({
-  // ... previous styles remain the same ...
   categoryContainer: {
     marginTop: 5,
     marginBottom: 10,
@@ -257,6 +347,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
+  },
+  loadingText: {
+    color: 'white',
+    marginTop: 12,
+    fontSize: 16,
   },
   errorContainer: {
     flex: 1,
@@ -300,6 +395,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
+    borderColor: "red"
   },
   headerContainer: {
     marginTop: 10,
@@ -360,7 +456,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  // ... rest of the styles remain the same
 });
 
 export default ProductDetails;
