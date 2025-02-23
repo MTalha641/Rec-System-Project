@@ -40,12 +40,9 @@ const RootLayout = () => {
       <Stack.Screen name="product/[id]" options={{headerShown:false}} />
       <Stack.Screen name="Paymentgateway" options={{ headerShown: false }} />
       <Stack.Screen name="Riderscreen" options={{ headerShown: false }} />
-<<<<<<< HEAD
-=======
       <Stack.Screen name="MyProductsList" options={{ headerShown: false }} />
       <Stack.Screen name="MySavedProducts" options={{ headerShown: false }} />
       <Stack.Screen name="ProductReview" options={{ headerShown: false }} />
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
     </Stack>
   </AuthProvider>
   

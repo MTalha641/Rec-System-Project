@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-from django.shortcuts import render
-
-# Create your views here.
-=======
 from django.db.models import Avg
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -40,8 +35,7 @@ class ReviewAPI(APIView):
 
         serializer = ReviewSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()  # ✅ Just store the review, no score calculation here
+            serializer.save()  
             return Response({"message": "Review submitted successfully"}, status=201)
         
         return Response(serializer.errors, status=400)
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a

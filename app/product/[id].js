@@ -1,4 +1,4 @@
-import React, { useEffect, useState,useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   View,
   FlatList,
@@ -13,14 +13,13 @@ import {
   StyleSheet
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import FontAwesome from "react-native-vector-icons/FontAwesome";
 import Fontisto from "react-native-vector-icons/Fontisto";
 import moment from "moment";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import Review from "../../components/Reviews";
 import axios from 'axios';
-import {API_URL} from "@env";
+import { API_URL } from "@env";
 import AuthContext from "../context/AuthContext";
 
 const { width } = Dimensions.get("window");
@@ -28,14 +27,17 @@ const { width } = Dimensions.get("window");
 const ProductDetails = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [product, setProduct] = useState(null);
   const [displayPrice, setDisplayPrice] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState('day');
   const [isSaved, setIsSaved] = useState(false);
-  const {token} = useContext(AuthContext);
+  const [aiScore, setAiScore] = useState(null); // New state for AI score
+
+  const { token } = useContext(AuthContext);
+
   // Parse location string to get latitude and longitude
   const getLocationCoordinates = (locationString) => {
     if (!locationString) return { latitude: 0, longitude: 0 };
@@ -49,22 +51,22 @@ const ProductDetails = () => {
         console.warn("Token is missing, skipping fetch");
         return;
       }
-      console.log("AuthContext token:", token);
-      console.log("API URL:", API_URL);
-      console.log("item id check in [id].js",id)
-
-  
       try {
         setLoading(true);
         setError(null);
-        console.log("Fetching with Token:", token); // Debugging token
-  
+
         const response = await axios.get(`${API_URL}/api/items/get/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-  
+
         setProduct(response.data);
         setDisplayPrice(response.data.price); // Set initial price
+
+       
+        const scoreResponse = await axios.get(`${API_URL}/api/reviews/getoverallscore/${id}/?score=true`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAiScore(scoreResponse.data.overall_score); 
       } catch (error) {
         const errorMessage = error?.message || "Failed to load product details";
         setError(errorMessage);
@@ -73,13 +75,12 @@ const ProductDetails = () => {
         setLoading(false);
       }
     };
-  
+
     if (id) {
       fetchProductDetails();
     }
-  }, [id, token]); 
+  }, [id, token]);
 
-  
   const calculatePrice = (period) => {
     if (!product) return 0;
     const basePrice = product.price;
@@ -110,7 +111,7 @@ const ProductDetails = () => {
 
   const handleReserveProduct = () => {
     if (!product) return;
-    
+
     router.push({
       pathname: "/ReserveProduct",
       params: {
@@ -167,15 +168,15 @@ const ProductDetails = () => {
             renderItem={renderImageItem}
           />
         </View>
-         
         
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>
             <Text style={styles.title}>{product.title}</Text>
-            <TouchableOpacity className="bg-[#475FCB] py-2 px-4 rounded-lg self-start"
-             onPress={() => router.push('ProductReview')}
+            <TouchableOpacity
+              style={{ backgroundColor: "#475FCB", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}
+              onPress={() => router.push({ pathname: "/ProductReview", params: { productId: id } })}
             >
-                <Text className="text-white font-bold">Give Review</Text>
+              <Text style={{ color: "white", fontWeight: "bold" }}>Give Review</Text>
             </TouchableOpacity>
           </View>
 
@@ -194,32 +195,35 @@ const ProductDetails = () => {
 
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
-          <View/>
-          <View style={{flexDirection: "row"}}>
-          <Text style={styles.sectionTitle}>AI Rating - </Text>
-          <View className="bg-black-100" style={{paddingVertical: 3, paddingHorizontal: 7, borderRadius: 5 }}>
-              <Text style={{color: "white", fontSize: 22 }}>★ 4.5</Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={styles.sectionTitle}>AI Rating - </Text>
+            <View style={{ backgroundColor: "#000", paddingVertical: 3, paddingHorizontal: 7, borderRadius: 5 }}>
+              <Text style={{ color: "white", fontSize: 22 }}>
+                {aiScore !== null ? `★ ${aiScore}` : "Loading..."}
+              </Text>
             </View>
           </View>
+
           <View>
-          <MapView
-            style={styles.map}
-            region={{
-              ...coordinates,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.00421,
-            }}
-          >
-            <Marker
-              coordinate={coordinates}
-              title={product.title}
-            />
-          </MapView>
+            <MapView
+              style={styles.map}
+              region={{
+                ...coordinates,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.00421,
+              }}
+            >
+              <Marker
+                coordinate={coordinates}
+                title={product.title}
+              />
+            </MapView>
           </View>
           <View>
-          <Text style={styles.sectionTitle}>Rating and Reviews</Text>
-          <Review />
-        </View>
+            <Text style={styles.sectionTitle}>Rating and Reviews</Text>
+            <Review />
+          </View>
         </View>
       </ScrollView>
 
@@ -248,7 +252,6 @@ const ProductDetails = () => {
 };
 
 const styles = StyleSheet.create({
-  // ... previous styles remain the same ...
   categoryContainer: {
     marginTop: 5,
     marginBottom: 10,
@@ -294,18 +297,6 @@ const styles = StyleSheet.create({
     height: '90%',
     backgroundColor: 'white',
     borderRadius: 10,
-  },
-  dotContainer: {
-    flexDirection: 'row',
-    width,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dot: {
-    width: 10,
-    height: 5,
-    borderRadius: 5,
-    marginLeft: 5,
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -370,7 +361,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  // ... rest of the styles remain the same
 });
 
 export default ProductDetails;

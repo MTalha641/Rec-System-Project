@@ -13,19 +13,13 @@ import { AuthContext } from "../context/AuthContext";
 import Furniture from "../../assets/icons/living-room.png";
 import CustomButton from "../../components/CustomButton";
 import avatarSource1 from "../../assets/icons/profile.png";
-<<<<<<< HEAD
-=======
 import { useRouter } from 'expo-router';
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
 
 const Profile = () => {
   const { user, logout } = useContext(AuthContext); // Access the user and logout function from AuthContext
   const username = user?.username || "Unknown User"; // Dynamically display username or fallback
-<<<<<<< HEAD
 
-=======
     const router = useRouter();
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
   // Use a fallback image if user.avatar is undefined or not a valid string URL
   const avatarSource = user?.avatar && typeof user.avatar === "string" ? 
     { uri: user.avatar } : 
@@ -64,19 +58,12 @@ const Profile = () => {
         <TouchableOpacity
           className="w-full border-2 border-black-200 px-4 h-16 bg-black-100 rounded-2xl items-center focus:border-secondary flex-row space-x-4 mt-6"
           activeOpacity={1}
-<<<<<<< HEAD
-=======
           onPress={() => router.push('MyProductsList')}
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
         >
           <Text
             className="text-base mt-0.5 flex-1 text-white font-pregular"
             style={{ opacity: 1 }}
-<<<<<<< HEAD
-          >
-=======
           > 
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
             My Products
           </Text>
           <Image
@@ -89,10 +76,7 @@ const Profile = () => {
         <TouchableOpacity
           className="w-full border-2 border-black-200 px-4 h-16 bg-black-100 rounded-2xl items-center focus:border-secondary flex-row space-x-4 mt-6"
           activeOpacity={1}
-<<<<<<< HEAD
-=======
           onPress={() => router.push('MySavedProducts')}
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
         >
           <Text
             className="text-base mt-0.5 flex-1 text-white font-pregular"

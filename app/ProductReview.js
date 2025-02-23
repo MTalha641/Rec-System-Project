@@ -1,4 +1,4 @@
-import {
+import { 
   View,
   Text,
   ScrollView,
@@ -6,59 +6,70 @@ import {
   Image,
   TextInput,
   StyleSheet,
+  Alert,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ReactNativeModal from "react-native-modal";
-import CustomButton from "../components/CustomButton"; // Ensure this component exists
+import CustomButton from "../components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
-import logo from "../assets/images/RLogo.png"; // Replace with actual path
+import logo from "../assets/images/RLogo.png";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import AuthContext from "./context/AuthContext";
+import { API_URL } from "@env";
+import axios from "axios";
+import { useLocalSearchParams } from "expo-router";
 const ProductReview = () => {
+  // const [name, setName] = useState(""); // Commented out
   const [rating, setRating] = useState(0);
-  const [name, setName] = useState("");
   const [review, setReview] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const { token } = useContext(AuthContext);
   const router = useRouter();
   const navigation = useNavigation();
-  const route = useRoute();
-  const { productId } = route.params;
+ 
+
+const { productId } = useLocalSearchParams();
 
   const handlePostReview = async () => {
-    if (!name.trim() || !review.trim() || rating === 0) {
-      setError("All fields are required, including a rating.");
+    console.log("checking the token being sent", token);
+    console.log("Submitting Review for Item ID:", productId);
+
+
+    if (!review.trim() || rating === 0) { // Removed name check
+      setError("All fields are required, including your rating.");
       return;
     }
 
     try {
-      // Fetch existing reviews from storage
-      const existingReviews = await AsyncStorage.getItem(
-        `reviews_${productId}`
+      const response = await axios.post(
+        `${API_URL}/api/reviews/submit/`,
+        {
+          item: productId,
+          // name,  // Commented out
+          rating,
+          review,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      const reviewsArray = existingReviews ? JSON.parse(existingReviews) : [];
 
-      // Create new review object
-      const newReview = { id: Date.now(), review, rating };
-
-      // Save updated reviews
-      await AsyncStorage.setItem(
-        `reviews_${productId}`,
-        JSON.stringify([...reviewsArray, newReview])
-      );
-
-      Alert.alert("Success", "Review added!");
-      navigation.goBack(); // Go back to Product Details
+      Alert.alert("Success", "Review added successfully!");
+      navigation.goBack();
     } catch (error) {
-      console.error("Error saving review:", error);
+      console.error("Error submitting review:", error.response?.data || error.message);
+      setError(error.response?.data?.message || "Failed to submit review. Please try again.");
     }
 
     setError("");
     setSuccess(true);
-    setTimeout(() => router.push("/home"), 2000); // Redirect after 2 seconds
+    setTimeout(() => router.push("/home"), 2000);
   };
 
   return (
@@ -76,17 +87,19 @@ const ProductReview = () => {
         </Text>
 
         {error ? (
-          <Text className="text-red-500 font-bold  mb-3">{error}</Text>
+          <Text className="text-red-500 font-bold mb-3">{error}</Text>
         ) : null}
 
-        <Text className="text-white text-lg mb-2 font-bold">Your Name</Text>
+        {/* 
+        <Text className="text-white text-lg mt-4 mb-2 font-bold">Enter Your Name</Text>
         <TextInput
-          className="font-bold border border-gray-400 rounded-lg p-3 text-white"
-          placeholder="Enter your name"
+          className="border border-gray-400 rounded-lg p-3 text-white"
+          placeholder="Your Name"
           placeholderTextColor="white"
           value={name}
           onChangeText={setName}
         />
+        */}
 
         <Text className="text-white text-lg mt-4 mb-2 font-bold">Rating</Text>
         <View className="flex-row border border-gray-400 rounded-lg p-3 text-white">
@@ -135,8 +148,7 @@ const ProductReview = () => {
             Product Review posted successfully.
           </Text>
           <Text className="text-md text-gray-500 text-center mt-3">
-            Thank you for your review. Your review will help us become better.
-            Please proceed.
+            Thank you for your review. Your feedback helps us improve.
           </Text>
           <CustomButton
             title="Back Home"

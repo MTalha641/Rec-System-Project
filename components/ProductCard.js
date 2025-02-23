@@ -54,30 +54,6 @@ const ProductCard = ({ product }) => {
               borderTopRightRadius: 16,
             }}
           >
-<<<<<<< HEAD
-            <Text style={{ textAlign: "center", color: "#9E9E9E" }}>
-              No Image
-            </Text>
-          </View>
-        )}
-        <View style={{ padding: 16 }}>
-          <Text
-            style={{ fontWeight: "bold", color: "#FFFFFF", fontSize: 14 }}
-            numberOfLines={1}
-          >
-            {product.title || "Untitled Product"}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-            <Text style={{ color: "#007BFF", fontSize: 12 }}>
-              PKR {product.price || "N/A"}
-            </Text>
-            <Text style={{ color: "#FFFFFF", fontSize: 12 }}> /day</Text>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
-            <MaterialIcons name="category" size={16} color="#777777" />
-            <Text style={{ fontSize: 12, color: "#FFFFFF", marginLeft: 4 }}>
-              {product.category || "Uncategorized"}
-=======
             <Text className="text-center text-gray-500">No Image</Text>
           </View>
         )}
@@ -93,7 +69,6 @@ const ProductCard = ({ product }) => {
             <MaterialIcons name="category" size={16} color="#777777" />
             <Text className="text-xs truncate text-white ml-1">
               {product.category}
->>>>>>> ec78a19527262ad4e08178b934d5c508a446979a
             </Text>
           </View>
         </View>
