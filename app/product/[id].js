@@ -222,7 +222,8 @@ const ProductDetails = () => {
           </View>
           <View>
             <Text style={styles.sectionTitle}>Rating and Reviews</Text>
-            <Review />
+            
+            <Review id={id} /> 
           </View>
         </View>
       </ScrollView>

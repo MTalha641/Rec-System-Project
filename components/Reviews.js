@@ -1,52 +1,42 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState , useContext} from "react";
 import { FlatList, Text, View, StyleSheet } from "react-native";
 import Ratings from "./Ratings";
+import axios from "axios";
+import { API_URL } from "@env";
+import { AuthContext } from "../app/context/AuthContext";
 
-const Reviews = () => {
+const Reviews = ({ id }) => {
+  const { token } = useContext(AuthContext);// Get token from context
   const [reviewData, setReviewData] = useState([]);
-
-  // Dummy data, as the frontend-only version won't fetch data from the server
-  const reviews = [
-    {
-      name: "Sumair Ahmed",
-      rating: 5,
-      comment:
-        "Overall good experience, shoe is comfy and well-maintained. I saved good amount of money and still stand out in my event.",
-    },
-    {
-      name: "Zulfiqar Ahmed Khan",
-      rating: 3,
-      comment:
-        "Cards are a great way to display information, usually containing content and actions about a single subject. Cards can contain images, buttons, text and more.",
-    },
-    {
-      name: "Abdur Rehman",
-      rating: 5,
-      comment:
-        "Cards are a great way to display information, usually containing content and actions about a single subject. Cards can contain images, buttons, text and more.",
-    },
-    {
-      name: "Hassaan Quershi",
-      rating: 4.5,
-      comment:
-        "Cards are a great way to display information, usually containing content and actions about a single subject. Cards can contain images, buttons, text and more.",
-    },
-  ];
+  // console.log("Review component received id:", id);
 
   useEffect(() => {
-    setReviewData(reviews); // Directly set reviewData to our dummy data
-  }, []);
+    const fetchReviews = async () => {
+      if (!id) return; // Ensure id and token are available
+
+      try {
+        const response = await axios.get(`${API_URL}/api/reviews/getreview/${id}/`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add token in headers
+          },
+        });
+        console.log("here")
+        setReviewData(response.data);
+        console.log("Fetched Reviews for ID:", id, response.data);
+
+        console.log("component inside")
+      } catch (error) {
+        console.error("Error fetching reviews:", error.response?.data || error.message);
+      }
+    };
+
+    fetchReviews();
+  }, [id, token]); // Re-run when id or token changes
 
   const renderItem = ({ item }) => (
     <View style={styles.reviewContainer}>
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>{item.name.slice(0, 1)}</Text>
-      </View>
-      <View style={styles.infoContainer}>
-        <Text style={styles.nameText}>{item.name}</Text>
-        <Ratings value={item.rating} />
-      </View>
-      <Text style={styles.commentText}>{item.comment}</Text>
+      <Ratings value={item.rating} />
+      <Text style={styles.commentText}>{item.review}</Text>
     </View>
   );
 
@@ -70,38 +60,11 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     marginRight: 10,
     borderRadius: 10,
-    marginBottom: 20
-
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#e0e0e0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-    alignItems: "flex-start",
-    justifyContent: "flex-start"
-  },
-  infoContainer: {
-    marginLeft: 8,
-    flexDirection: "column",
-    color:"white",
-     alignItems: "flex-start",
-    justifyContent: "flex-start"
-  },
-  nameText: {
-    fontSize: 16,
-    color: "white"
+    marginBottom: 20,
   },
   commentText: {
     marginTop: 5,
-    color: "white"
+    color: "white",
   },
   noReviewsText: {
     alignSelf: "center",

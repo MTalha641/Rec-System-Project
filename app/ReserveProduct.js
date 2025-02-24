@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,28 +19,63 @@ import moment from "moment";
 import axios from "axios";
 import AuthContext from "./context/AuthContext";
 import racquet from "../assets/images/racquet.jpg";
-import dummyImage1 from "../assets/images/racquet.jpg";
-import dummyImage2 from "../assets/images/racquet.jpg";
-import dummyImage3 from "../assets/images/racquet.jpg";
+// import dummyImage1 from "../assets/images/racquet.jpg";
+// import dummyImage2 from "../assets/images/racquet.jpg";
+// import dummyImage3 from "../assets/images/racquet.jpg";
 import { API_URL } from "@env";
 
 const ReserveProduct = () => {
   const { productId } = useLocalSearchParams();
-  console.log("Item ID from params:", productId);
+  console.log("Item ID check from params:", productId);
 
   const { token } = useContext(AuthContext);
   console.log("Auth Token:", token);
 
   const router = useRouter();
 
-  const product = {
-    title: "Sample Product",
-    displayPrice: 1500,
-    imageids: [racquet, dummyImage1, dummyImage2, dummyImage3],
-  };
-
+  const [product, setProduct] = useState({
+    title: "",
+    displayPrice: 0,
+    image: null
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState({});
+
+  // Fetch product data on component mount
+  useEffect(() => {
+    const fetchProductData = async () => {
+      try {
+        setIsDataLoading(true);
+        const response = await axios.get(`${API_URL}/api/items/get/${productId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("Product data fetched:", response.data);
+        
+        
+        setProduct({
+          title: response.data.title || "Product Name",
+          displayPrice: response.data.price || 0,
+          // adding image here
+          image: response.data.image,
+        });
+      } catch (error) {
+        console.error("Error fetching product:", error.response?.data || error.message);
+        Alert.alert(
+          "Error",
+          "Failed to load product details. Please try again."
+        );
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+
+    if (productId && token) {
+      fetchProductData();
+    }
+  }, [productId, token]);
 
   const handleDateSelection = (day) => {
     console.log("Selected Date:", day.dateString);
@@ -132,6 +167,15 @@ const ReserveProduct = () => {
     }
   };
 
+  if (isDataLoading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#2a9d8f" />
+        <Text style={styles.loadingText}>Loading product details...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView className="flex-1" style={styles.container}>
@@ -190,7 +234,7 @@ const ReserveProduct = () => {
                   {moment(selectedRange.endDate).diff(
                     selectedRange.startDate,
                     "days"
-                  )}
+                  ) + 1}
                 </Text>
               ) : (
                 <Text style={styles.errorText}>Please select dates</Text>
@@ -214,10 +258,10 @@ const ReserveProduct = () => {
                   ? Math.floor(
                       product.displayPrice * 0.1 +
                         product.displayPrice *
-                          moment(selectedRange.endDate).diff(
+                          (moment(selectedRange.endDate).diff(
                             selectedRange.startDate,
                             "days"
-                          )
+                          ) + 1)
                     )
                   : Math.floor(
                       product.displayPrice * 0.1 + product.displayPrice
@@ -247,6 +291,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#161622",
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#CDCDE0",
+    fontSize: 16,
   },
   scrollContent: {
     padding: 16,
