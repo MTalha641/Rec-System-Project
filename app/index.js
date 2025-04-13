@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { images } from "../constants";
 import logo from "../assets/images/RLogo.png";
 
-
 import CustomButton from "../components/CustomButton.js"
 
 export default function App() {

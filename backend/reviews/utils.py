@@ -12,7 +12,7 @@ def calculate_overall_score(item_id):
     past_reviews = Review.objects.filter(item_id=item_id)
 
     if not past_reviews.exists():
-        return 0  # ✅ If no reviews exist, return 0
+        return 0  # ✅ 
 
     total_score = 0
     total_reviews = past_reviews.count()
@@ -23,7 +23,7 @@ def calculate_overall_score(item_id):
 
         # Convert sentiment to numerical weight
         sentiment_weight = {"POSITIVE": 0.5, "NEUTRAL": 0.25, "NEGATIVE": -0.5}
-        sentiment_score = sentiment_weight.get(sentiment_result, 0.25)  # Default to 0.25 if no match
+        sentiment_score = sentiment_weight.get(sentiment_result, 0.25)  
 
         # Estimate review length weight
         review_length_weight = min(0.5, len(review.review.split()) / 40)  
