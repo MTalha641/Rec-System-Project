@@ -131,9 +131,7 @@ const MyProductsList = () => {
                   {selectedTab === "completed" && (
                     <TouchableOpacity
                       className="mt-2 bg-red-500 p-2 rounded-lg"
-                      onPress={() =>
-                        console.log("Leave Review", item.requestId)
-                      }
+                      onPress={() => router.push('DisputeForm')}
                     >
                       <Text className="text-white text-center">
                         File Dispute

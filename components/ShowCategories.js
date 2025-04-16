@@ -1,9 +1,9 @@
 import React from "react";
-import { View, Text, FlatList } from "react-native";
-import CategoryButton from "./CategoryButton"; // Assuming the file is in the same directory
-import Furniture from '../assets/icons/living-room.png'; // Verify this path
+import { View, FlatList } from "react-native";
+import CategoryButton from "./CategoryButton";
+import Furniture from '../assets/icons/living-room.png';
 
-const ShowCategories = ({ navigation }) => {
+const ShowCategories = () => {
   const categories = [
     { name: "Tools", icon: Furniture },
     { name: "Equipment", icon: Furniture },
@@ -24,11 +24,7 @@ const ShowCategories = ({ navigation }) => {
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.name}
         renderItem={({ item }) => (
-          <CategoryButton
-            Icon={item.icon}
-            IconName={item.name}
-            navigation={navigation}
-          />
+          <CategoryButton Icon={item.icon} IconName={item.name} />
         )}
       />
     </View>

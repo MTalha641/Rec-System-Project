@@ -16,7 +16,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Security settings
 SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh'
 DEBUG = True
+<<<<<<< HEAD
 ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1','10.206.70.1']
+=======
+ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', '192.168.100.15' ,'localhost','192.168.174.1','10.206.70.1']
+>>>>>>> origin/AsherUpdate2
 
 # Application definition
 INSTALLED_APPS = [
@@ -103,7 +107,11 @@ USE_TZ = True
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
+<<<<<<< HEAD
     'http://192.168.1.109:8001',
+=======
+    'http://192.168.100.15:8001',
+>>>>>>> origin/AsherUpdate2
     'http://localhost:8000',
      'http://10.206.70.1:8000',
 

@@ -151,9 +151,15 @@ const ReserveProduct = () => {
           },
         }
       );
+<<<<<<< HEAD
       console.log("Booking successful:", response.data);
       Alert.alert("Success", "Product Reserved Successfully", [
         { text: "OK", onPress: () => router.push("/Paymentgateway") },
+=======
+      console.log("Booking Request successful:", response.data);
+      Alert.alert("Success", "Booking Request Sent Successfully, Kindly Wait for Approval. ", [
+        { text: "OK", onPress: () => router.push("/home") },
+>>>>>>> origin/AsherUpdate2
       ]);
     } catch (error) {
       console.error("Booking error:", error.response?.data || error.message);
@@ -278,7 +284,11 @@ const ReserveProduct = () => {
             {isLoading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
+<<<<<<< HEAD
               <Text style={styles.confirmButtonText}>Confirm and Pay</Text>
+=======
+              <Text style={styles.confirmButtonText}>Confirm Request</Text>
+>>>>>>> origin/AsherUpdate2
             )}
           </TouchableOpacity>
         </ScrollView>

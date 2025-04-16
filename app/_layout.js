@@ -43,6 +43,11 @@ const RootLayout = () => {
       <Stack.Screen name="MyProductsList" options={{ headerShown: false }} />
       <Stack.Screen name="MySavedProducts" options={{ headerShown: false }} />
       <Stack.Screen name="ProductReview" options={{ headerShown: false }} />
+<<<<<<< HEAD
+=======
+      <Stack.Screen name="DisputeForm" options={{ headerShown: false }} />
+      <Stack.Screen name="category/[categoryName]" options={{ headerShown: false }} />
+>>>>>>> origin/AsherUpdate2
     </Stack>
   </AuthProvider>
   
