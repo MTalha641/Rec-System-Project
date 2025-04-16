@@ -154,17 +154,6 @@ const Paymentgateway = () => {
             Booking Request placed successfully.
           </Text>
           <Text className="text-md text-gray-500 text-center mt-3">
-<<<<<<< HEAD
-            Thank you for your booking Request. Your reservation will be approved by Product Owner.
-            Please proceed.
-          </Text>
-          <CustomButton
-            title="Back Home"
-            containerStyles="mt-5 w-full"
-            handlePress={() => {
-              setSuccess(false);
-              router.push("/home");
-=======
             Thank you for your booking Product. Your Rider will deliver your requested item soon.
             Please proceed.
           </Text>
@@ -174,7 +163,6 @@ const Paymentgateway = () => {
             handlePress={() => {
               setSuccess(false);
               router.push("/Riderscreen");
->>>>>>> origin/AsherUpdate2
             }}
           />
         </View>
