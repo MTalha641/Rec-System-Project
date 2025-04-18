@@ -68,12 +68,12 @@ class RenteeBookingRequestsView(APIView):
         bookings = Booking.objects.filter(item__rentee=rentee, status='pending').order_by('-created_at')
 
         data = [{
-            "booking_id": b.id,
+             "booking_id": b.id,
             "item_title": b.item.title,
             "renter_name": b.user.username,
-            "start_date": b.start_date,
-            "end_date": b.end_date,
-            "total_price": b.total_price,
+            # "start_date": b.start_date,
+            # "end_date": b.end_date,
+            # "total_price": b.total_price,
             "status": b.status
         } for b in bookings]
 
@@ -91,9 +91,9 @@ class RenterBookingListView(APIView):
             "booking_id": b.id,
             "item_title": b.item.title,
             "rentee_name": b.item.rentee.username,
-            "start_date": b.start_date,
-            "end_date": b.end_date,
-            "total_price": b.total_price,
+            # "start_date": b.start_date,
+            # "end_date": b.end_date,
+            # "total_price": b.total_price,
             "status": b.status
         } for b in bookings]
 
@@ -124,3 +124,45 @@ class UpdateBookingStatusView(APIView):
             "booking_id": booking.id,
             "status": booking.status
         }, status=status.HTTP_200_OK)
+
+
+class UserReservationsView(APIView):
+    """
+    API endpoint to get all approved bookings for the current user as a renter
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Log information for debugging
+        print(f"Fetching reservations for user: {request.user.username}")
+        
+        # Get only bookings where the current user is the renter and the booking is approved
+        user_reservations = Booking.objects.filter(
+            user=request.user,
+            status='approved'
+        ).order_by('-created_at')
+        
+        # Log count for debugging
+        print(f"Found {user_reservations.count()} approved reservations for {request.user.username}")
+        
+        if user_reservations.count() == 0:
+            print("No reservations found, checking if the user has any bookings at all")
+            all_user_bookings = Booking.objects.filter(user=request.user)
+            print(f"User has {all_user_bookings.count()} total bookings")
+            if all_user_bookings.count() > 0:
+                print(f"Booking statuses: {[b.status for b in all_user_bookings]}")
+        
+        # Format the data to include only what's needed
+        reservations_data = [{
+            "id": booking.id,
+            "item_name": booking.item.title,
+            "owner_name": booking.item.rentee.username,
+            "image_url": booking.item.image.url if hasattr(booking.item, 'image') and booking.item.image else None,
+            "start_date": booking.start_date,
+            "end_date": booking.end_date,
+            "total_price": booking.total_price
+        } for booking in user_reservations]
+        
+        print(f"Returning {len(reservations_data)} formatted reservations")
+        
+        return Response(reservations_data, status=status.HTTP_200_OK)

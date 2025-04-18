@@ -12,7 +12,7 @@ class Booking(models.Model):
         ('rejected', 'Rejected'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # renter
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  
     item = models.ForeignKey(Item, on_delete=models.CASCADE)  
     start_date = models.DateField()  
     end_date = models.DateField()  
@@ -21,8 +21,8 @@ class Booking(models.Model):
     max_length=20,
     choices=STATUS_CHOICES,
     default='pending',
-    null=True,  # <- Add this temporarily
-    blank=True  # <- Optional: allows form validation
+    null=True,  
+    blank=True  
 )
     created_at = models.DateTimeField(default=now)
 
