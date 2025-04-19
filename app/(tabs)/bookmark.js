@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback, memo, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
@@ -10,305 +10,166 @@ const Bookmark = () => {
   const [selectedTab, setSelectedTab] = useState('requested');
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
   const router = useRouter();
   const { token } = useContext(AuthContext);
 
-  useEffect(() => {
-    fetchBookmarks();
-  }, [selectedTab, token]);
-
-  const fetchBookmarks = async () => {
+  // Function to trigger a refresh of bookmarks data
+  const refreshBookmarks = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+  
+  // Memoize the fetch function to avoid recreating it on every render
+  const fetchBookmarks = useCallback(async () => {
     if (!token) {
       console.error('No auth token found');
+      setLoading(false);
       return;
     }
 
+    // Rate limiting - prevent fetching more than once every 5 seconds
+    const now = Date.now();
+    if (now - lastFetchTime < 5000 && lastFetchTime !== 0) {
+      return;
+    }
+    
     try {
       setLoading(true);
+      setLastFetchTime(now);
+      
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
 
-      // Fetch incoming requests
-      const incomingResponse = await axios.get(
-        `${API_URL}/api/bookings/incomingrequests/`, 
-        { headers }
-      );
-      
-      // Log the first item's complete structure to see where the ID field is
-      if (incomingResponse.data && incomingResponse.data.length > 0) {
-        console.log("Sample incoming request structure:", JSON.stringify(incomingResponse.data[0]));
-      }
+      // Use Promise.all to fetch both APIs concurrently
+      const [incomingResponse, myRequestsResponse] = await Promise.all([
+        axios.get(`${API_URL}/api/bookings/incomingrequests/`, { headers }),
+        axios.get(`${API_URL}/api/bookings/myrequests/`, { headers })
+      ]);
       
       setIncomingRequests(incomingResponse.data);
-      console.log("Fetched incoming requests:", incomingResponse.data);
-
-      // Fetch my outgoing requests
-      const myRequestsResponse = await axios.get(
-        `${API_URL}/api/bookings/myrequests/`, 
-        { headers }
-      );
-      
       setMyRequests(myRequestsResponse.data);
-      console.log("Fetched my requests:", myRequestsResponse.data);
     } catch (error) {
-      console.error("Error fetching bookmarks:", error.response?.data || error.message);
+      console.error("Error fetching bookmarks:", error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, lastFetchTime]);
 
-  // Update the updateBookingStatus function to handle the API URL correctly
-  const updateBookingStatus = async (bookingId, status) => {
-    if (!token) {
-      console.error('No auth token found');
-      return;
-    }
+  // Fetch data when component mounts or when dependencies change
+  useEffect(() => {
+    fetchBookmarks();
+  }, [fetchBookmarks, refreshTrigger]);
 
-    if (!bookingId) {
-      console.error('No booking ID provided');
-      return false;
-    }
+  // Memoize filtered data to prevent recalculations on every render
+  const filteredData = useMemo(() => {
+    return {
+      pendingIncoming: incomingRequests.filter(item => item.status === 'pending'),
+      pendingOutgoing: myRequests.filter(item => item.status === 'pending'),
+      approvedIncoming: incomingRequests.filter(item => item.status === 'approved'),
+      approvedOutgoing: myRequests.filter(item => item.status === 'approved')
+    };
+  }, [incomingRequests, myRequests]);
+
+  // Safely extract ID from booking object
+  const getBookingId = useCallback((item) => {
+    return item.id || item.booking_id || item._id || item.bookingId || item.booking;
+  }, []);
+
+  // Handle approval of booking requests
+  const handleApprove = useCallback(async (bookingId) => {
+    if (!token || !bookingId) return;
 
     try {
-      setLoading(true);
+      // Optimistically update UI
+      setIncomingRequests(prevRequests => 
+        prevRequests.map(request => 
+          getBookingId(request) === bookingId ? { ...request, status: 'approved' } : request
+        )
+      );
+
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
 
-      // Log the API URL and request data
-      console.log(`Updating booking ${bookingId} to status: ${status}`);
-      const apiUrl = `${API_URL}/api/bookings/update-status/${bookingId}/`;
-      console.log(`API URL: ${apiUrl}`);
-      console.log(`Request data:`, { status });
-      console.log(`Request headers:`, headers);
-      console.log(`Using PATCH request method instead of POST`);
-
-      // Use PATCH request instead of POST
-      const response = await axios.patch(
-        apiUrl,
-        { status },
+      await axios.patch(
+        `${API_URL}/api/bookings/update-status/${bookingId}/`,
+        { status: 'approved' },
         { headers }
       );
-      
-      console.log("Status update API response:", response.data);
-      
-      // Only update the local state if the API call was successful
-      if (response.data && response.status === 200) {
-        // Update the status in the local state for better UX
-        setIncomingRequests(prevRequests => 
-          prevRequests.map(request => {
-            // Try all possible ID field names for comparison
-            const requestId = request.id || request.booking_id || request._id || request.bookingId || request.booking;
-            return requestId === bookingId ? { ...request, status } : request;
-          })
-        );
-        
-        // Fetch fresh data from the server to ensure data consistency
-        await fetchBookmarks();
-        return true;
-      } else {
-        console.error("API responded but status update may not have succeeded:", response);
-        return false;
-      }
     } catch (error) {
-      console.error("Error updating booking status:", error);
-      if (error.response) {
-        console.error("Error status:", error.response.status);
-        console.error("Error details:", error.response.data);
-      } else if (error.request) {
-        console.error("No response received:", error.request);
-      } else {
-        console.error("Error message:", error.message);
-      }
-      return false;
-    } finally {
-      setLoading(false);
+      console.error("Error approving booking:", error.message);
+      // Revert optimistic update if the API call failed
+      refreshBookmarks();
     }
-  };
+  }, [token, getBookingId, refreshBookmarks]);
 
-  // Alternative updateBookingStatus function with different API format
-  // Try this if the original function continues to fail
-  const tryAlternativeUpdateFormat = async (bookingId, status) => {
-    if (!token || !bookingId) return false;
-    
+  // Handle rejection of booking requests
+  const handleReject = useCallback(async (bookingId) => {
+    if (!token || !bookingId) return;
+
     try {
-      setLoading(true);
+      // Optimistically update UI
+      setIncomingRequests(prevRequests => 
+        prevRequests.map(request => 
+          getBookingId(request) === bookingId ? { ...request, status: 'rejected' } : request
+        )
+      );
+
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
-      
-      // Try alternative API formats
-      console.log("Trying alternative API format");
-      
-      // Option 1: Basic URL with PATCH request
-      let apiUrl = `${API_URL}/api/bookings/${bookingId}/`;
-      console.log(`Trying URL format 1 (PATCH direct to booking): ${apiUrl}`);
-      
-      try {
-        const response = await axios.patch(
-          apiUrl,
-          { status },
-          { headers }
-        );
-        
-        if (response.status === 200) {
-          console.log("Alternative format 1 succeeded");
-          await fetchBookmarks();
-          return true;
-        }
-      } catch (err) {
-        console.log("Alternative format 1 failed:", err.message);
-      }
-      
-      // Option 2: Different URL format - no trailing slash
-      apiUrl = `${API_URL}/api/bookings/update-status/${bookingId}`;
-      console.log(`Trying URL format 2 (PATCH): ${apiUrl}`);
-      
-      try {
-        const response = await axios.patch(
-          apiUrl,
-          { status },
-          { headers }
-        );
-        
-        if (response.status === 200) {
-          console.log("Alternative format 2 succeeded");
-          await fetchBookmarks();
-          return true;
-        }
-      } catch (err) {
-        console.log("Alternative format 2 failed:", err.message);
-      }
-      
-      // Option 3: Different endpoint structure
-      apiUrl = `${API_URL}/api/bookings/${bookingId}/update-status/`;
-      console.log(`Trying URL format 3 (PATCH): ${apiUrl}`);
-      
-      try {
-        const response = await axios.patch(
-          apiUrl,
-          { status },
-          { headers }
-        );
-        
-        if (response.status === 200) {
-          console.log("Alternative format 3 succeeded");
-          await fetchBookmarks();
-          return true;
-        }
-      } catch (err) {
-        console.log("Alternative format 3 failed:", err.message);
-      }
-      
-      // Option 4: Fallback to POST if PATCH didn't work
-      apiUrl = `${API_URL}/api/bookings/update-status/${bookingId}/`;
-      console.log(`Trying URL format 4 (POST): ${apiUrl}`);
-      
-      try {
-        const response = await axios.post(
-          apiUrl,
-          { status },
-          { headers }
-        );
-        
-        if (response.status === 200) {
-          console.log("Alternative format 4 succeeded");
-          await fetchBookmarks();
-          return true;
-        }
-      } catch (err) {
-        console.log("Alternative format 4 failed:", err.message);
-      }
-      
-      // Option 5: Using PUT instead of POST or PATCH
-      apiUrl = `${API_URL}/api/bookings/update-status/${bookingId}/`;
-      console.log(`Trying URL format 5 (PUT): ${apiUrl}`);
-      
-      try {
-        const response = await axios.put(
-          apiUrl,
-          { status },
-          { headers }
-        );
-        
-        if (response.status === 200) {
-          console.log("Alternative format 5 succeeded");
-          await fetchBookmarks();
-          return true;
-        }
-      } catch (err) {
-        console.log("Alternative format 5 failed:", err.message);
-      }
-      
-      return false;
+
+      await axios.patch(
+        `${API_URL}/api/bookings/update-status/${bookingId}/`,
+        { status: 'rejected' },
+        { headers }
+      );
     } catch (error) {
-      console.error("All alternative formats failed");
-      return false;
-    } finally {
-      setLoading(false);
+      console.error("Error rejecting booking:", error.message);
+      // Revert optimistic update if the API call failed
+      refreshBookmarks();
     }
-  };
+  }, [token, getBookingId, refreshBookmarks]);
 
-  const handleApprove = async (bookingId) => {
-    console.log("Handling approval for booking ID:", bookingId);
-    let success = await updateBookingStatus(bookingId, 'approved');
-    
-    // If standard update fails, try alternative format
-    if (!success) {
-      console.log("Standard update failed, trying alternative...");
-      success = await tryAlternativeUpdateFormat(bookingId, 'approved');
-    }
-    
-    if (success) {
-      console.log("Request approved successfully");
-    } else {
-      console.log("Failed to approve request after all attempts");
-    }
-  };
+  // Handle cancellation of booking requests
+  const handleCancelRequest = useCallback(async (bookingId) => {
+    if (!token || !bookingId) return;
 
-  const handleReject = async (bookingId) => {
-    console.log("Handling rejection for booking ID:", bookingId);
-    let success = await updateBookingStatus(bookingId, 'rejected');
-    
-    // If standard update fails, try alternative format
-    if (!success) {
-      console.log("Standard update failed, trying alternative...");
-      success = await tryAlternativeUpdateFormat(bookingId, 'rejected');
-    }
-    
-    if (success) {
-      console.log("Request rejected successfully");
-    } else {
-      console.log("Failed to reject request after all attempts");
-    }
-  };
+    try {
+      // Optimistically update UI
+      setMyRequests(prevRequests => 
+        prevRequests.filter(request => getBookingId(request) !== bookingId)
+      );
 
-  const renderIncomingRequestCard = (item) => {
-    console.log("Rendering incoming item:", item);
-    
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      await axios.delete(
+        `${API_URL}/api/bookings/cancel/${bookingId}/`,
+        { headers }
+      );
+    } catch (error) {
+      console.error("Error cancelling booking:", error.message);
+      // Revert optimistic update if the API call failed
+      refreshBookmarks();
+    }
+  }, [token, getBookingId, refreshBookmarks]);
+
+  // Memoized card components using React.memo
+  const IncomingRequestCard = memo(({ item }) => {
     const title = item.item_title || "Untitled Item";
     const renterName = item.renter_name || "Unknown User";
     const status = item.status || "pending";
     const imageUrl = item.image_url || 'https://via.placeholder.com/150';
-    
-    // Inspect the item structure completely
-    console.log("Complete item object:", JSON.stringify(item));
-    
-    // Check for ID in multiple possible locations
-    // The backend might be using one of these common naming conventions
-    const bookingId = item.id || item.booking_id || item._id || item.bookingId || item.booking;
-    
-    console.log("Extracted booking ID:", bookingId);
-    
-    // Early return if bookingId is undefined
-    if (!bookingId) {
-      console.error("Missing booking ID for item:", item);
-    }
+    const bookingId = getBookingId(item);
 
     return (
       <View key={bookingId || `incoming-${Math.random()}`} style={styles.cardContainer}>
@@ -338,25 +199,13 @@ const Bookmark = () => {
           <View style={styles.actionContainer}>
             <TouchableOpacity 
               style={styles.rejectButton} 
-              onPress={() => {
-                if (bookingId) {
-                  handleReject(bookingId);
-                } else {
-                  console.error("Cannot reject: Missing booking ID");
-                }
-              }}
+              onPress={() => bookingId && handleReject(bookingId)}
             >
               <Text style={styles.buttonText}>Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.approveButton} 
-              onPress={() => {
-                if (bookingId) {
-                  handleApprove(bookingId);
-                } else {
-                  console.error("Cannot approve: Missing booking ID");
-                }
-              }}
+              onPress={() => bookingId && handleApprove(bookingId)}
             >
               <Text style={styles.buttonText}>Approve</Text>
             </TouchableOpacity>
@@ -373,23 +222,14 @@ const Bookmark = () => {
         )}
       </View>
     );
-  };
+  });
 
-  const renderMyRequestCard = (item) => {
-    console.log("Rendering mine item:", item);
-    
+  const MyRequestCard = memo(({ item }) => {
     const title = item.item_title || "Untitled Item";
     const renteeName = item.rentee_name || "Unknown Owner";
     const status = item.status || "pending";
     const imageUrl = item.image_url || 'https://via.placeholder.com/150';
-    
-    // Inspect the item structure completely
-    console.log("Complete my request item object:", JSON.stringify(item));
-    
-    // Check for ID in multiple possible locations
-    const bookingId = item.id || item.booking_id || item._id || item.bookingId || item.booking;
-    
-    console.log("Extracted my request booking ID:", bookingId);
+    const bookingId = getBookingId(item);
 
     return (
       <View key={bookingId || `mine-${Math.random()}`} style={styles.cardContainer}>
@@ -418,7 +258,7 @@ const Bookmark = () => {
         {status === 'pending' && (
           <TouchableOpacity 
             style={styles.cancelButton}
-            onPress={() => console.log('Cancel request', item.id)}
+            onPress={() => bookingId && handleCancelRequest(bookingId)}
           >
             <Text style={styles.buttonText}>Cancel Request</Text>
           </TouchableOpacity>
@@ -434,14 +274,28 @@ const Bookmark = () => {
         )}
       </View>
     );
-  };
+  });
+
+  // Tab selection handlers
+  const handleRequestedTab = useCallback(() => {
+    setSelectedTab('requested');
+  }, []);
+
+  const handleApprovedTab = useCallback(() => {
+    setSelectedTab('approved');
+  }, []);
+
+  // Push to payment gateway - memoized handler
+  const handlePushToPayment = useCallback(() => {
+    router.push('Paymentgateway');
+  }, [router]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.tabContainer}>
           <TouchableOpacity
-            onPress={() => setSelectedTab('requested')}
+            onPress={handleRequestedTab}
             style={[
               styles.tabButton,
               selectedTab === 'requested' && styles.activeTab
@@ -450,7 +304,7 @@ const Bookmark = () => {
             <Text style={styles.tabText}>Requested</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setSelectedTab('approved')}
+            onPress={handleApprovedTab}
             style={[
               styles.tabButton,
               selectedTab === 'approved' && styles.activeTab
@@ -467,35 +321,63 @@ const Bookmark = () => {
             <>
               {/* Incoming Requests Section */}
               <Text style={styles.sectionTitle}>Incoming Requests</Text>
-              {incomingRequests.length === 0 ? (
-                <Text style={styles.emptyStateText}>No incoming requests</Text>
+              {filteredData.pendingIncoming.length === 0 ? (
+                <Text style={styles.emptyStateText}>No pending incoming requests</Text>
               ) : (
-                incomingRequests.map(item => renderIncomingRequestCard(item))
+                filteredData.pendingIncoming.map(item => (
+                  <IncomingRequestCard 
+                    key={getBookingId(item) || `incoming-${Math.random()}`} 
+                    item={item}
+                  />
+                ))
               )}
 
               {/* My Requests Section */}
               <Text style={[styles.sectionTitle, styles.sectionSpacing]}>My Requests</Text>
-              {myRequests.length === 0 ? (
-                <Text style={styles.emptyStateText}>No outgoing requests</Text>
+              {filteredData.pendingOutgoing.length === 0 ? (
+                <Text style={styles.emptyStateText}>No pending outgoing requests</Text>
               ) : (
-                myRequests.map(item => renderMyRequestCard(item))
+                filteredData.pendingOutgoing.map(item => (
+                  <MyRequestCard 
+                    key={getBookingId(item) || `mine-${Math.random()}`} 
+                    item={item}
+                  />
+                ))
               )}
             </>
           ) : (
             <>
               {/* Approved Items Section */}
-              <Text style={styles.sectionTitle}>Approved Items</Text>
-              {[...incomingRequests.filter(item => item.status === 'approved'),
-                ...myRequests.filter(item => item.status === 'approved')].length === 0 ? (
+              <Text style={styles.sectionTitle}>Approved Requests</Text>
+              {filteredData.approvedIncoming.length === 0 && filteredData.approvedOutgoing.length === 0 ? (
                 <Text style={styles.emptyStateText}>No approved items</Text>
               ) : (
                 <>
-                  {incomingRequests
-                    .filter(item => item.status === 'approved')
-                    .map(item => renderIncomingRequestCard(item))}
-                  {myRequests
-                    .filter(item => item.status === 'approved')
-                    .map(item => renderMyRequestCard(item))}
+                  {/* Approved items that others requested from me */}
+                  {filteredData.approvedIncoming.length > 0 && (
+                    <>
+                      <Text style={styles.subSectionTitle}>Items I'm Renting Out</Text>
+                      {filteredData.approvedIncoming.map(item => (
+                        <IncomingRequestCard 
+                          key={getBookingId(item) || `incoming-approved-${Math.random()}`} 
+                          item={item}
+                        />
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Approved items that I requested from others */}
+                  {filteredData.approvedOutgoing.length > 0 && (
+                    <>
+                      <Text style={[styles.subSectionTitle, styles.sectionSpacing]}>Items I'm Renting</Text>
+                      {filteredData.approvedOutgoing.map(item => (
+                        <MyRequestCard 
+                          key={getBookingId(item) || `mine-approved-${Math.random()}`} 
+                          item={item}
+                        />
+                      ))}
+                    </>
+                  )}
                 </>
               )}
             </>
@@ -540,6 +422,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 10,
+  },
+  subSectionTitle: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 10,
+    marginLeft: 8,
   },
   sectionSpacing: {
     marginTop: 24,

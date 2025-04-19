@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback, memo } from "react";
 import {
   View,
   Image,
@@ -18,14 +18,17 @@ import AuthContext from "./context/AuthContext";
 const MyProductsList = () => {
   const [selectedTab, setSelectedTab] = useState("reservation");
   const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { token } = useContext(AuthContext);
 
-  useEffect(() => {
-    fetchReservations();
-  }, [token]);
+  // Function to trigger a manual refresh
+  const refreshReservations = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
-  const fetchReservations = async () => {
+  // Function to fetch reservations data
+  const fetchReservations = useCallback(async () => {
     if (!token) {
       console.error('No auth token found');
       setLoading(false);
@@ -39,48 +42,58 @@ const MyProductsList = () => {
         'Content-Type': 'application/json'
       };
 
-      // Log the full API URL for debugging
-      const fullUrl = `${API_URL}/api/bookings/reservations/`;
-      console.log("Fetching reservations from:", fullUrl);
-      console.log("Headers:", headers);
-
       const response = await axios.get(
         `${API_URL}/api/bookings/reservations/`, 
         { headers }
       );
       
-      console.log("API Response status:", response.status);
-      console.log("API Response data length:", response.data ? response.data.length : 0);
-      console.log("API Response data:", JSON.stringify(response.data));
-      
       if (response.data && Array.isArray(response.data)) {
         setReservations(response.data);
       } else {
-        console.error("API did not return an array:", response.data);
+        console.error("API did not return an array");
         setReservations([]);
       }
     } catch (error) {
-      console.error("Error fetching reservations:", error);
-      if (error.response) {
-        console.error("Error status:", error.response.status);
-        console.error("Error data:", error.response.data);
-      } else if (error.request) {
-        console.error("No response received:", error.request);
-      } else {
-        console.error("Error message:", error.message);
-      }
+      console.error("Error fetching reservations:", error.message);
+      setReservations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  // This is just a placeholder function - you can implement it later if needed
-  const handleCancelReservation = (reservationId) => {
-    console.log("Cancel reservation", reservationId);
-  };
+  // Fetch data when component mounts or dependencies change
+  useEffect(() => {
+    fetchReservations();
+  }, [fetchReservations, refreshTrigger, selectedTab]);
 
-  // Debug render - display token status and API details
-  const renderDebugInfo = () => {
+  // Handle cancellation of a reservation
+  const handleCancelReservation = useCallback(async (reservationId) => {
+    if (!token || !reservationId) return;
+    
+    try {
+      // Optimistic UI update
+      setReservations(prev => 
+        prev.filter(item => item.id !== reservationId)
+      );
+      
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      await axios.delete(
+        `${API_URL}/api/bookings/cancel/${reservationId}/`,
+        { headers }
+      );
+    } catch (error) {
+      console.error("Error cancelling reservation:", error.message);
+      // Revert optimistic update if the API call failed
+      refreshReservations();
+    }
+  }, [token, refreshReservations]);
+
+  // Debug render - display token status and API details (only in development)
+  const renderDebugInfo = useCallback(() => {
     if (__DEV__) {
       return (
         <View style={{ padding: 10, borderWidth: 1, borderColor: '#666', marginBottom: 10 }}>
@@ -89,7 +102,7 @@ const MyProductsList = () => {
           <Text style={{ color: 'white', fontSize: 12 }}>Reservations count: {reservations.length}</Text>
           <TouchableOpacity 
             style={{ backgroundColor: '#555', padding: 5, borderRadius: 5, marginTop: 5 }}
-            onPress={fetchReservations}
+            onPress={refreshReservations}
           >
             <Text style={{ color: 'white', textAlign: 'center' }}>Retry</Text>
           </TouchableOpacity>
@@ -97,7 +110,70 @@ const MyProductsList = () => {
       );
     }
     return null;
-  };
+  }, [token, reservations.length, refreshReservations]);
+
+  // Memoized reservation card component
+  const ReservationCard = memo(({ item }) => (
+    <View
+      key={item.id || `reservation-${Math.random()}`}
+      className="bg-[#1E1E2D] rounded-lg p-4 mb-4 shadow-md"
+    >
+      <View className="flex-row items-center">
+        <Image
+          source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
+          className="w-16 h-16 rounded-lg mr-4"
+          style={{ width: 64, height: 64, borderRadius: 8, marginRight: 15 }}
+        />
+        <View className="flex-1">
+          <Text className="text-lg font-semibold text-white">
+            {item.item_name}
+          </Text>
+          <Text className="text-white">
+            Owner: {item.owner_name}
+          </Text>
+          {item.start_date && item.end_date && (
+            <Text className="text-xs text-gray-400">
+              {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+            </Text>
+          )}
+          {item.total_price && (
+            <Text className="text-blue-400">
+              Total: PKR {item.total_price}
+            </Text>
+          )}
+        </View>
+      </View>
+      {selectedTab === "reservation" && (
+        <TouchableOpacity
+          className="mt-2 bg-green-500 p-2 rounded-lg"
+          onPress={() => router.push('Paymentgateway')}
+        >
+          <Text className="text-white text-center">
+            Make Payment
+          </Text>
+        </TouchableOpacity>
+      )}
+      {selectedTab === "completed" && (
+        <TouchableOpacity
+          className="mt-2 bg-red-500 p-2 rounded-lg"
+          onPress={() => router.push('DisputeForm')}
+        >
+          <Text className="text-white text-center">
+            File Dispute
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  ));
+
+  // Handlers for tab selection
+  const handleReservationTab = useCallback(() => {
+    setSelectedTab("reservation");
+  }, []);
+
+  const handleCompletedTab = useCallback(() => {
+    setSelectedTab("completed");
+  }, []);
 
   return (
     <SafeAreaView className="bg-primary h-full">
@@ -110,7 +186,7 @@ const MyProductsList = () => {
       <View className="flex-1 p-5 bg-[#161622]">
         <View className="flex-row justify-center">
           <TouchableOpacity
-            onPress={() => setSelectedTab("reservation")}
+            onPress={handleReservationTab}
             className={`p-2 ${
               selectedTab === "reservation" ? "border-b-2 border-blue-500" : ""
             }`}
@@ -120,7 +196,7 @@ const MyProductsList = () => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setSelectedTab("completed")}
+            onPress={handleCompletedTab}
             className={`p-2 ${
               selectedTab === "completed" ? "border-b-2 border-blue-500" : ""
             }`}
@@ -143,56 +219,10 @@ const MyProductsList = () => {
             </Text>
           ) : (
             reservations.map((item) => (
-              <View
-                key={item.id || `reservation-${Math.random()}`}
-                className="bg-[#1E1E2D] rounded-lg p-4 mb-4 shadow-md"
-              >
-                <View className="flex-row items-center">
-                  <Image
-                    source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
-                    className="w-16 h-16 rounded-lg mr-4"
-                    style={{ width: 64, height: 64, borderRadius: 8, marginRight: 15 }}
-                  />
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-white">
-                      {item.item_name}
-                    </Text>
-                    <Text className="text-white">
-                      Owner: {item.owner_name}
-                    </Text>
-                    {item.start_date && item.end_date && (
-                      <Text className="text-xs text-gray-400">
-                        {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
-                      </Text>
-                    )}
-                    {item.total_price && (
-                      <Text className="text-blue-400">
-                        Total: PKR {item.total_price}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                {selectedTab === "reservation" && (
-                  <TouchableOpacity
-                    className="mt-2 bg-green-500 p-2 rounded-lg"
-                    onPress={() => router.push('Paymentgateway')}
-                  >
-                    <Text className="text-white text-center">
-                      Make Payment
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {selectedTab === "completed" && (
-                  <TouchableOpacity
-                    className="mt-2 bg-red-500 p-2 rounded-lg"
-                    onPress={() => router.push('DisputeForm')}
-                  >
-                    <Text className="text-white text-center">
-                      File Dispute
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <ReservationCard 
+                key={item.id || `reservation-${Math.random()}`} 
+                item={item} 
+              />
             ))
           )}
         </ScrollView>

@@ -133,36 +133,48 @@ class UserReservationsView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        # Log information for debugging
-        print(f"Fetching reservations for user: {request.user.username}")
-        
         # Get only bookings where the current user is the renter and the booking is approved
         user_reservations = Booking.objects.filter(
             user=request.user,
             status='approved'
         ).order_by('-created_at')
         
-        # Log count for debugging
-        print(f"Found {user_reservations.count()} approved reservations for {request.user.username}")
-        
-        if user_reservations.count() == 0:
-            print("No reservations found, checking if the user has any bookings at all")
-            all_user_bookings = Booking.objects.filter(user=request.user)
-            print(f"User has {all_user_bookings.count()} total bookings")
-            if all_user_bookings.count() > 0:
-                print(f"Booking statuses: {[b.status for b in all_user_bookings]}")
-        
         # Format the data to include only what's needed
         reservations_data = [{
             "id": booking.id,
             "item_name": booking.item.title,
             "owner_name": booking.item.rentee.username,
-            "image_url": booking.item.image.url if hasattr(booking.item, 'image') and booking.item.image else None,
+            "image_url": booking.item.image.url if booking.item.image else None,
             "start_date": booking.start_date,
             "end_date": booking.end_date,
             "total_price": booking.total_price
         } for booking in user_reservations]
         
-        print(f"Returning {len(reservations_data)} formatted reservations")
-        
         return Response(reservations_data, status=status.HTTP_200_OK)
+
+
+class CancelBookingView(APIView):
+    """
+    API endpoint to cancel a booking request
+    Only allows users to cancel their own requests that are still pending
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            return Response({"message": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Verify that the user is the one who made the booking
+        if booking.user != request.user:
+            return Response({"message": "You can only cancel your own booking requests."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Verify that the booking is still in pending status
+        if booking.status != 'pending':
+            return Response({"message": "Only pending bookings can be canceled."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Delete the booking
+        booking.delete()
+        
+        return Response({"message": "Booking request has been canceled successfully."}, status=status.HTTP_200_OK)
