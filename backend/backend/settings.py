@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'bookings',
     'users',
     'reviews',
+    'payments',
     'recommendations',
     'corsheaders',
     'rest_framework_simplejwt',
