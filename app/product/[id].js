@@ -10,7 +10,7 @@ import {
   Button,
   Alert,
   ActivityIndicator,
-  StyleSheet
+  StyleSheet,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Fontisto from "react-native-vector-icons/Fontisto";
@@ -18,7 +18,7 @@ import moment from "moment";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import Review from "../../components/Reviews";
-import axios from 'axios';
+import axios from "axios";
 import { API_URL } from "@env";
 import AuthContext from "../context/AuthContext";
 
@@ -32,7 +32,7 @@ const ProductDetails = () => {
   const [error, setError] = useState(null);
   const [product, setProduct] = useState(null);
   const [displayPrice, setDisplayPrice] = useState(0);
-  const [selectedPeriod, setSelectedPeriod] = useState('day');
+  const [selectedPeriod, setSelectedPeriod] = useState("day");
   const [isSaved, setIsSaved] = useState(false);
   const [aiScore, setAiScore] = useState(null); // New state for AI score
 
@@ -41,7 +41,9 @@ const ProductDetails = () => {
   // Parse location string to get latitude and longitude
   const getLocationCoordinates = (locationString) => {
     if (!locationString) return { latitude: 0, longitude: 0 };
-    const [latitude, longitude] = locationString.split(',').map(coord => parseFloat(coord));
+    const [latitude, longitude] = locationString
+      .split(",")
+      .map((coord) => parseFloat(coord));
     return { latitude, longitude };
   };
 
@@ -62,11 +64,13 @@ const ProductDetails = () => {
         setProduct(response.data);
         setDisplayPrice(response.data.price); // Set initial price
 
-       
-        const scoreResponse = await axios.get(`${API_URL}/api/reviews/getoverallscore/${id}/?score=true`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setAiScore(scoreResponse.data.overall_score); 
+        const scoreResponse = await axios.get(
+          `${API_URL}/api/reviews/getoverallscore/${id}/?score=true`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setAiScore(scoreResponse.data.overall_score);
       } catch (error) {
         const errorMessage = error?.message || "Failed to load product details";
         setError(errorMessage);
@@ -87,7 +91,7 @@ const ProductDetails = () => {
     const discounts = {
       day: 1,
       week: 0.85,
-      month: 0.70
+      month: 0.7,
     };
     return Math.round(basePrice * discounts[period]);
   };
@@ -118,8 +122,8 @@ const ProductDetails = () => {
         productId: product.id,
         period: selectedPeriod,
         price: displayPrice,
-        rentee: product.rentee
-      }
+        rentee: product.rentee,
+      },
     });
   };
 
@@ -144,9 +148,7 @@ const ProductDetails = () => {
   if (error || !product) {
     return (
       <SafeAreaView style={styles.errorContainer}>
-        <Text style={styles.errorText}>
-          {error || 'Product not found'}
-        </Text>
+        <Text style={styles.errorText}>{error || "Product not found"}</Text>
         <Button title="Retry" onPress={() => router.back()} />
       </SafeAreaView>
     );
@@ -168,15 +170,42 @@ const ProductDetails = () => {
             renderItem={renderImageItem}
           />
         </View>
-        
+
         <View style={styles.contentContainer}>
           <View style={styles.headerContainer}>
-            <Text style={styles.title}>{product.title}</Text>
-            <TouchableOpacity
-              style={{ backgroundColor: "#475FCB", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}
-              onPress={() => router.push({ pathname: "/ProductReview", params: { productId: id } })}
+            <View
+              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
             >
-              <Text style={{ color: "white", fontWeight: "bold" }}>Give Review</Text>
+              <Text style={styles.title}>{product.title}</Text>
+              <TouchableOpacity
+                onPress={handleSaveProduct}
+                style={{ marginLeft: 10 }}
+              >
+                <Fontisto
+                  name={isSaved ? "heart" : "heart-alt"}
+                  size={22}
+                  color={isSaved ? "#FF6B81" : "#ffffff"}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#475FCB",
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 8,
+              }}
+              onPress={() =>
+                router.push({
+                  pathname: "/ProductReview",
+                  params: { productId: id },
+                })
+              }
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Give Review
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -198,7 +227,14 @@ const ProductDetails = () => {
 
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={styles.sectionTitle}>AI Rating - </Text>
-            <View style={{ backgroundColor: "#000", paddingVertical: 3, paddingHorizontal: 7, borderRadius: 5 }}>
+            <View
+              style={{
+                backgroundColor: "#000",
+                paddingVertical: 3,
+                paddingHorizontal: 7,
+                borderRadius: 5,
+              }}
+            >
               <Text style={{ color: "white", fontSize: 22 }}>
                 {aiScore !== null ? `★ ${aiScore}` : "Loading..."}
               </Text>
@@ -214,16 +250,13 @@ const ProductDetails = () => {
                 longitudeDelta: 0.00421,
               }}
             >
-              <Marker
-                coordinate={coordinates}
-                title={product.title}
-              />
+              <Marker coordinate={coordinates} title={product.title} />
             </MapView>
           </View>
           <View>
             <Text style={styles.sectionTitle}>Rating and Reviews</Text>
-            
-            <Review id={id} /> 
+
+            <Review id={id} />
           </View>
         </View>
       </ScrollView>
@@ -233,7 +266,7 @@ const ProductDetails = () => {
           PKR {displayPrice}/{selectedPeriod}
         </Text>
         <View style={styles.buttonContainer}>
-          {['day', 'week', 'month'].map((period) => (
+          {["day", "week", "month"].map((period) => (
             <Button
               key={period}
               title={period.charAt(0).toUpperCase() + period.slice(1)}
@@ -258,45 +291,45 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   categoryText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 14,
   },
   container: {
     flex: 1,
-    backgroundColor: '#161622',
+    backgroundColor: "#161622",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1a1a1a",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1a1a1a",
     padding: 20,
   },
   errorText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
     marginBottom: 20,
   },
   imageGallery: {
     height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   imageContainer: {
     width,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   productImage: {
-    width: '90%',
-    height: '90%',
-    backgroundColor: 'white',
+    width: "90%",
+    height: "90%",
+    backgroundColor: "white",
     borderRadius: 10,
   },
   contentContainer: {
@@ -304,50 +337,50 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   title: {
-    color: 'white',
+    color: "white",
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
   },
   dateContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginVertical: 2,
-    alignItems: 'center',
+    alignItems: "center",
   },
   dateText: {
     fontSize: 14,
-    color: 'white',
+    color: "white",
     marginLeft: 8,
   },
   sectionTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginVertical: 7,
   },
   description: {
     fontSize: 14,
-    color: 'white',
+    color: "white",
     lineHeight: 20,
-    marginBottom: 10
+    marginBottom: 10,
   },
   map: {
     height: 200,
     borderRadius: 10,
     marginBottom: 20,
-    marginTop: 10
+    marginTop: 10,
   },
   bottomBar: {
-    backgroundColor: '#1E1E2D',
+    backgroundColor: "#1E1E2D",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.34,
     shadowRadius: 6.27,
@@ -355,12 +388,12 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: 22,
-    color: '#475FCB',
+    color: "#475FCB",
     marginBottom: 10,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 });
 

@@ -45,6 +45,7 @@ const RootLayout = () => {
       <Stack.Screen name="ProductReview" options={{ headerShown: false }} />
       <Stack.Screen name="DisputeForm" options={{ headerShown: false }} />
       <Stack.Screen name="category/[categoryName]" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
     </Stack>
   </AuthProvider>
   
