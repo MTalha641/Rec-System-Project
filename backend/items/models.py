@@ -30,3 +30,16 @@ class SearchHistory(models.Model):
         if self.item:
             return f"{self.user.username} searched for {self.item.title}"
         return f"{self.user.username} searched '{self.search_query}'"
+
+
+class SavedItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_items')
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'item')
+        ordering = ['-saved_at']
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.item.title}"

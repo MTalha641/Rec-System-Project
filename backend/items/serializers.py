@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Item
-from .models import SearchHistory
+from .models import Item, SearchHistory, SavedItem
+
 class ItemSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)  # Use ImageField for handling images
 
@@ -26,4 +26,13 @@ class SearchHistorySerializer(serializers.ModelSerializer):
         model = SearchHistory
         fields = ['id', 'user', 'item', 'timestamp']
         read_only_fields = ['id', 'timestamp']
+   
+
+class SavedItemSerializer(serializers.ModelSerializer):
+    item_details = ItemSerializer(source='item', read_only=True)
+    
+    class Meta:
+        model = SavedItem
+        fields = ['id', 'user', 'item', 'item_details', 'saved_at']
+        read_only_fields = ['id', 'saved_at']
    

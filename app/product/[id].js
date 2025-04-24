@@ -71,6 +71,15 @@ const ProductDetails = () => {
           }
         );
         setAiScore(scoreResponse.data.overall_score);
+        
+        // Check if the item is saved
+        const savedResponse = await axios.get(
+          `${API_URL}/api/items/saved-items/check/?item=${id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setIsSaved(savedResponse.data.is_saved);
       } catch (error) {
         const errorMessage = error?.message || "Failed to load product details";
         setError(errorMessage);
@@ -103,12 +112,19 @@ const ProductDetails = () => {
 
   const handleSaveProduct = async () => {
     try {
-      setIsSaved(!isSaved);
+      const response = await axios.post(
+        `${API_URL}/api/items/saved-items/toggle/`,
+        { item: id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setIsSaved(response.data.saved);
       Alert.alert(
         "Success",
-        isSaved ? "Product removed from saved!" : "Product saved!"
+        response.data.message
       );
     } catch (error) {
+      console.error("Error toggling saved status:", error);
       Alert.alert("Error", "Failed to update saved status");
     }
   };

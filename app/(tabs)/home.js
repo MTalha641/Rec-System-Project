@@ -27,13 +27,28 @@ const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [exploreItems, setExploreItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
-  // Dummy notification array — replace with API logic if needed
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: "approval" },
-    { id: 2, type: "request" },
-    { id: 3, type: "completion" },
-  ]);
+  const fetchUnreadNotificationCount = async () => {
+    if (!token) {
+      console.warn('No token available for notification count!');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/api/notifications/count-unread/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response?.data) {
+        setNotificationCount(response.data.unread_count);
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error.response?.data || error.message);
+    }
+  };
 
   const fetchExploreItems = async () => {
     if (!token) {
@@ -65,12 +80,13 @@ const Home = () => {
   useEffect(() => {
     if (token) {
       fetchExploreItems();
+      fetchUnreadNotificationCount();
     }
   }, [token]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchExploreItems();
+    await Promise.all([fetchExploreItems(), fetchUnreadNotificationCount()]);
     setRefreshing(false);
   };
 
@@ -117,13 +133,13 @@ const Home = () => {
                   className="ml-1 mt-5 relative"
                 >
                   <Bell color="white" size={23} />
-                  {notifications.length > 0 && (
+                  {notificationCount > 0 && (
                     <View
                       className="absolute -top-1 -right-1 bg-red-500 rounded-full items-center justify-center"
                       style={{ width: 16, height: 16 }}
                     >
                       <Text className="text-white text-[10px] font-bold">
-                        {notifications.length}
+                        {notificationCount}
                       </Text>
                     </View>
                   )}

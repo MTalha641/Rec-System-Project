@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
+import { API_URL } from "@env";
 
 const ProductCard = ({ product }) => {
   const router = useRouter();
@@ -21,7 +22,7 @@ const ProductCard = ({ product }) => {
     );
   }
 
-  const productImage = product.image; // Use the full URL from the backend
+  const productImage = product.image;
 
   return (
     <View
@@ -36,7 +37,7 @@ const ProductCard = ({ product }) => {
       <Pressable onPress={handlePress}>
         {productImage ? (
           <Image
-            source={{ uri: productImage }} // Full URI for the image
+            source={{ uri: `${API_URL}${productImage}` }}
             className="w-full"
             resizeMode="cover"
             style={{
@@ -68,7 +69,7 @@ const ProductCard = ({ product }) => {
           <View className="flex-row justify-start items-center mt-1">
             <MaterialIcons name="category" size={16} color="#777777" />
             <Text className="text-xs truncate text-white ml-1">
-              {product.category}
+              {product.category} • {product.sub_category}
             </Text>
           </View>
         </View>

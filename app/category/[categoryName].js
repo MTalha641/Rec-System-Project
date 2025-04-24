@@ -5,40 +5,84 @@ import {
     FlatList,
     Image,
     TouchableOpacity,
+    ActivityIndicator,
+    Alert,
   } from "react-native";
-  import React from "react";
+  import React, { useState, useEffect, useContext } from "react";
   import { useLocalSearchParams, router } from "expo-router";
   import { Ionicons } from "@expo/vector-icons";
-  import logo from "../../assets/images/RLogo.png";
+  import axios from "axios";
+  import { API_URL } from "@env";
   import { SafeAreaView } from "react-native-safe-area-context";
-  
-  const dummyAds = [
-    { id: "1", title: "Hammer Tool", category: "Tools" },
-    { id: "2", title: "Microwave Oven", category: "Appliances" },
-    { id: "3", title: "Gaming Laptop", category: "Computing" },
-    { id: "4", title: "T-Shirt Pack", category: "Apparel" },
-    { id: "5", title: "Sneakers", category: "Footwear" },
-    { id: "10", title: "Sneakers", category: "Footwear" },
-    { id: "6", title: "Sofa Set", category: "Furniture" },
-    { id: "7", title: "Gas Stove", category: "Kitchenware" },
-    { id: "8", title: "Drill Machine", category: "Equipment" },
-    { id: "9", title: "Misc Item 1", category: "Others" },
-  ];
+  import { AuthContext } from "../context/AuthContext";
   
   const CategoryPage = () => {
     const { categoryName } = useLocalSearchParams();
+    const { token } = useContext(AuthContext);
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
   
-    const filteredAds = dummyAds.filter((item) => item.category === categoryName);
+    useEffect(() => {
+      fetchCategoryItems();
+    }, [categoryName]);
+  
+    const fetchCategoryItems = async () => {
+      if (!token) {
+        console.warn("No token available!");
+        setLoading(false);
+        return;
+      }
+  
+      setLoading(true);
+      setError(null);
+  
+      try {
+        // Get all items
+        const response = await axios.get(`${API_URL}/api/items/getallitems/`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        if (response?.data) {
+          // Filter items by category name
+          const filteredItems = response.data.filter(
+            (item) => item.category === categoryName
+          );
+          setItems(filteredItems);
+        } else {
+          console.warn("No data received from the API");
+          setItems([]);
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching category items:",
+          error.response?.data || error.message
+        );
+        setError("Failed to load items. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
   
     const ProductCard = ({ item }) => (
-      <View style={styles.card}>
-        <Image source={logo} resizeMode="contain" style={styles.image} />
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => router.push(`/product/${item.id}`)}
+      >
+        <Image 
+          source={item.image ? { uri: `${API_URL}${item.image}` } : require("../../assets/images/RLogo.png")} 
+          resizeMode="contain" 
+          style={styles.image} 
+        />
         <View style={styles.content}>
           <Text style={styles.title}>
             {item.title.slice(0, 25)}
             {item.title.length > 25 && "..."}
           </Text>
-          <Text style={styles.category}>{item.category}</Text>
+          <Text style={styles.price}>PKR {item.price}</Text>
+          <Text style={styles.category}>{item.sub_category}</Text>
           <View style={styles.bottomRow}>
             <TouchableOpacity
               onPress={() => router.push(`/product/${item.id}`)}
@@ -48,7 +92,7 @@ import {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   
     return (
@@ -57,18 +101,28 @@ import {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{categoryName} Products</Text>
+          <Text style={styles.headerTitle}>{categoryName}</Text>
         </View>
   
-        <FlatList
-          data={filteredAds}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductCard item={item} />}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No ads found for this category.</Text>
-          }
-          contentContainerStyle={{ paddingBottom: 16 }}
-        />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => <ProductCard item={item} />}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No items found in this category.</Text>
+            }
+            contentContainerStyle={{ paddingBottom: 16 }}
+          />
+        )}
       </SafeAreaView>
     );
   };
@@ -94,6 +148,22 @@ import {
       color: "#FFFFFF",
       marginLeft: 10,
     },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    errorText: {
+      color: "#FF6B6B",
+      fontSize: 16,
+      textAlign: "center",
+    },
     card: {
       flexDirection: "row",
       alignItems: "center",
@@ -108,6 +178,7 @@ import {
       width: 80,
       height: 80,
       borderRadius: 8,
+      backgroundColor: "#2a2a3a",
     },
     content: {
       flex: 1,
@@ -117,6 +188,12 @@ import {
       fontSize: 18,
       fontWeight: "bold",
       color: "#FFFFFF",
+    },
+    price: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#00BFFF",
+      marginTop: 4,
     },
     category: {
       color: "#cccccc",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Image,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -14,207 +15,122 @@ import moment from "moment";
 import logo from "../assets/images/RLogo.png";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import axios from "axios";
+import { API_URL } from "@env";
+import AuthContext from "./context/AuthContext";
 
 const MySavedProducts = () => {
   const navigation = useNavigation();
-  const [handleModal, setHandleModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState("");
-
-  const dummyProducts = [
-    {
-      requestId: "1",
-      product: {
-        productID: "100",
-        title: "Wireless Headphones",
-        category: "Electronics",
-        email: "seller@example.com",
-      },
-      timeStamp: "2024-11-20T12:00:00Z",
-      totalPrice: 5000,
-      requestStatus: "pending",
-      endDate: "2024-11-25",
-    },
-    {
-      requestId: "2",
-      product: {
-        productID: "101",
-        title: "Running Shoes Item",
-        category: "Sports",
-        email: "seller2@example.com",
-      },
-      timeStamp: "2024-11-18T10:00:00Z",
-      totalPrice: 8000,
-      requestStatus: "accept",
-      endDate: "2024-11-24",
-    },
-    {
-      requestId: "3",
-      product: {
-        productID: "102",
-        title: "Gaming Laptop",
-        category: "Electronics",
-        email: "techstore@example.com",
-      },
-      timeStamp: "2024-11-15T09:30:00Z",
-      totalPrice: 150000,
-      requestStatus: "accept",
-      endDate: "2024-11-28",
-    },
-    {
-      requestId: "4",
-      product: {
-        productID: "103",
-        title: "Mountain Bike",
-        category: "Sports",
-        email: "bikeshop@example.com",
-      },
-      timeStamp: "2024-11-14T16:45:00Z",
-      totalPrice: 30000,
-      requestStatus: "pending",
-      endDate: "2024-12-01",
-    },
-    {
-      requestId: "5",
-      product: {
-        productID: "104",
-        title: "Smartwatch",
-        category: "Electronics",
-        email: "gadgethub@example.com",
-      },
-      timeStamp: "2024-11-10T11:15:00Z",
-      totalPrice: 10000,
-      requestStatus: "reject",
-      endDate: "2024-11-22",
-    },
-    {
-      requestId: "6",
-      product: {
-        productID: "105",
-        title: "Leather Wallet",
-        category: "Fashion",
-        email: "fashionstore@example.com",
-      },
-      timeStamp: "2024-11-12T14:20:00Z",
-      totalPrice: 2500,
-      requestStatus: "accept",
-      endDate: "2024-11-20",
-    },
-    {
-      requestId: "7",
-      product: {
-        productID: "106",
-        title: "Office Chair",
-        category: "Furniture",
-        email: "homestore@example.com",
-      },
-      timeStamp: "2024-11-08T17:10:00Z",
-      totalPrice: 18000,
-      requestStatus: "pending",
-      endDate: "2024-11-30",
-    },
-    {
-      requestId: "8",
-      product: {
-        productID: "107",
-        title: "Electric Guitar",
-        category: "Music",
-        email: "musicshop@example.com",
-      },
-      timeStamp: "2024-11-07T19:55:00Z",
-      totalPrice: 40000,
-      requestStatus: "accept",
-      endDate: "2024-11-25",
-    },
-    {
-      requestId: "9",
-      product: {
-        productID: "108",
-        title: "Camping Tent",
-        category: "Outdoor",
-        email: "adventuregear@example.com",
-      },
-      timeStamp: "2024-11-05T08:30:00Z",
-      totalPrice: 12000,
-      requestStatus: "reject",
-      endDate: "2024-11-18",
-    },
-    {
-      requestId: "10",
-      product: {
-        productID: "109",
-        title: "Smartphone",
-        category: "Electronics",
-        email: "mobileshop@example.com",
-      },
-      timeStamp: "2024-11-03T13:40:00Z",
-      totalPrice: 90000,
-      requestStatus: "accept",
-      endDate: "2024-11-29",
-    },
-  ];
+  const [isLoading, setIsLoading] = useState(true);
+  const [savedItems, setSavedItems] = useState([]);
+  const [error, setError] = useState(null);
   
+  const { token } = useContext(AuthContext);
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case "accept":
-        return "Booked";
-      case "pending":
-        return "Available";
-      default:
-        return status;
+  useEffect(() => {
+    fetchSavedItems();
+  }, []);
+
+  const fetchSavedItems = async () => {
+    if (!token) {
+      console.warn("Token is missing, skipping fetch");
+      setIsLoading(false);
+      return;
     }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "accept":
-        return "#28a745";
-      case "reject":
-        return "#dc3545";
-      case "pending":
-        return "#ffc107";
-      default:
-        return "#888888";
-    }
-  };
-
-  const Card = ({ id, title, time, price, category, status, email, endDate }) => {
-    const handleCancel = () => {
+    
+    try {
       setIsLoading(true);
-      setTimeout(() => {
-        console.log(`Cancelled reservation for ID: ${id}`);
-        setIsLoading(false);
-      }, 1000);
-    };
-  
-    const isEndDateToday = moment(endDate).isSame(moment(), "day");
-  
+      setError(null);
+      
+      const response = await axios.get(
+        `${API_URL}/api/items/saved-items/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      console.log("Saved items response:", JSON.stringify(response.data));
+      
+      // Log each saved item's structure to understand the data
+      if (response.data && response.data.length > 0) {
+        response.data.forEach((savedItem, index) => {
+          console.log(`Saved item ${index}:`, {
+            savedItemId: savedItem.id,
+            itemId: savedItem.item,
+            itemDetailsId: savedItem.item_details?.id,
+            title: savedItem.item_details?.title
+          });
+        });
+      }
+      
+      setSavedItems(response.data);
+    } catch (error) {
+      console.error("Error fetching saved items:", error.response ? error.response.data : error.message);
+      setError("Failed to load saved items");
+      Alert.alert("Error", "Failed to load saved items");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRemoveSaved = async (itemId) => {
+    try {
+      console.log(`Attempting to remove item ID: ${itemId}`);
+      
+      await axios.post(
+        `${API_URL}/api/items/saved-items/toggle/`,
+        { item: itemId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Remove from local state - use the item ID for filtering
+      setSavedItems(savedItems.filter(savedItem => savedItem.item_details.id !== itemId));
+      Alert.alert("Success", "Item removed from saved items");
+      
+      // Refresh the list to ensure it's up to date
+      fetchSavedItems();
+    } catch (error) {
+      console.error("Error removing item:", error.response ? error.response.data : error.message);
+      Alert.alert("Error", error.response?.data?.error || "Failed to remove item");
+    }
+  };
+
+  const handleViewItem = (itemId) => {
+    router.push(`/product/${itemId}`);
+  };
+
+  const Card = ({ savedItem }) => {
+    const item = savedItem.item_details;
+    
     return (
-      <View style={styles.card}>
-        <Image source={logo} resizeMode="contain" style={styles.image} />
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => handleViewItem(item.id)}
+      >
+        <Image 
+          source={item.image ? { uri: `${API_URL}${item.image}` } : logo} 
+          resizeMode="contain" 
+          style={styles.image} 
+        />
         <View style={styles.content}>
-          <Text style={styles.title}>{title.slice(0, 25)}{title.length > 25 && "..."}</Text>
-          <Text style={styles.time}>{moment(time).format("MMMM Do YYYY, h:mm a")}</Text>
-          <Text style={styles.price}>PKR {price}</Text>
-          <Text style={styles.time}>{email}</Text>
+          <Text style={styles.title}>{item.title.slice(0, 25)}{item.title.length > 25 && "..."}</Text>
+          <Text style={styles.time}>{moment(savedItem.saved_at).format("MMMM Do YYYY")}</Text>
+          <Text style={styles.price}>PKR {item.price}</Text>
   
           <View style={styles.bottomRow}>
             <View style={[styles.categoryTag, styles.sportsCategory]}>
-              <Text style={styles.statusText}>{category}</Text>
+              <Text style={styles.statusText}>{item.category}</Text>
             </View>
-            <View style={[styles.status, { backgroundColor: getStatusColor(status) }]}>
-              <Text style={styles.statusText}>{getStatusText(status)}</Text>
-            </View>
-          </View>
-  
-          {isEndDateToday && status !== "pending" && (
-            <TouchableOpacity style={styles.reviewButton} onPress={() => { setSelectedId(id); setHandleModal(true); }}>
-              <Text style={styles.cancelButtonText}>Give Review</Text>
+            <TouchableOpacity 
+              style={styles.removeButton}
+              onPress={() => {
+                console.log(`Remove button pressed for item: ${item.id}`);
+                handleRemoveSaved(item.id);
+              }}
+            >
+              <Text style={styles.removeButtonText}>Remove</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -226,25 +142,37 @@ const MySavedProducts = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved Products</Text>
       </View>
-      <ScrollView>
-        {dummyProducts.length > 0 ? (
-          dummyProducts.map((item) => (
-            <Card
-              key={item.requestId}
-              id={item.product.productID}
-              title={item.product.title}
-              time={item.timeStamp}
-              price={item.totalPrice}
-              category={item.product.category}
-              status={item.requestStatus}
-              email={item.product.email}
-              endDate={item.endDate}
-            />
-          ))
-        ) : (
-          <Text style={{ alignSelf: "center", fontSize: 16 }}>EMPTY</Text>
-        )}
-      </ScrollView>
+      
+      {isLoading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#ffffff" />
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : (
+        <ScrollView>
+          {savedItems.length > 0 ? (
+            savedItems.map((item) => (
+              <Card 
+                key={`saved_${item.id}`} 
+                savedItem={item} 
+              />
+            ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No saved items found</Text>
+              <TouchableOpacity 
+                style={styles.browseButton}
+                onPress={() => router.push('/home')}
+              >
+                <Text style={styles.browseButtonText}>Browse Products</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -269,6 +197,44 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     marginLeft: 10,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+  },
+  emptyText: {
+    color: '#ffffff',
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  browseButton: {
+    backgroundColor: '#475FCB',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  browseButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   card: {
     flexDirection: "row",
@@ -311,16 +277,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 4,
-    color: "FFFFFF"
+    color: "#FFFFFF"
   },
   sportsCategory: {
     backgroundColor: "#005fff", // Navy blue
-  },
-  status: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    alignSelf: "flex-end", 
   },
   statusText: {
     color: "#FFFFFF",
@@ -332,6 +292,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 6, 
+  },
+  removeButton: {
+    backgroundColor: "#ff6b6b",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  removeButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
   },
 });
 

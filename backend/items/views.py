@@ -2,8 +2,8 @@ from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.decorators import action
-from .models import Item,SearchHistory
-from .serializers import ItemSerializer,SearchHistorySerializer
+from .models import Item,SearchHistory, SavedItem
+from .serializers import ItemSerializer,SearchHistorySerializer, SavedItemSerializer
 from django.db.models import Q
 
 
@@ -123,6 +123,145 @@ class ItemViewSet(viewsets.ModelViewSet):
             "search_results": serializer.data,
             "message": f"Search for '{query}' logged successfully."
         }, status=status.HTTP_200_OK)
+
+class SavedItemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for handling CRUD operations for saved items.
+    """
+    queryset = SavedItem.objects.all()
+    serializer_class = SavedItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Return only saved items belonging to the current user.
+        """
+        return SavedItem.objects.filter(user=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Save an item for the current user.
+        """
+        # Ensure the item exists
+        try:
+            item_id = request.data.get('item')
+            item = Item.objects.get(id=item_id)
+        except Item.DoesNotExist:
+            return Response(
+                {"error": "Item not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if already saved
+        existing = SavedItem.objects.filter(user=request.user, item=item).first()
+        if existing:
+            return Response(
+                {"message": "Item already saved"}, 
+                status=status.HTTP_200_OK
+            )
+        
+        # Create new saved item
+        saved_item = SavedItem.objects.create(user=request.user, item=item)
+        serializer = self.get_serializer(saved_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'])
+    def unsave(self, request, pk=None):
+        """
+        Remove an item from saved items.
+        """
+        print(f"Unsave request received for item ID: {pk}, User: {request.user.username}")
+        try:
+            # First check if the item exists
+            try:
+                item = Item.objects.get(id=pk)
+                print(f"Item found: {item.title}")
+            except Item.DoesNotExist:
+                print(f"Item with ID {pk} does not exist")
+                return Response(
+                    {"error": f"Item with ID {pk} does not exist"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Then check if the item is saved by the user
+            try:
+                saved_item = SavedItem.objects.get(user=request.user, item_id=pk)
+                print(f"SavedItem found for {request.user.username} and item {pk}")
+                saved_item.delete()
+                print(f"SavedItem deleted successfully")
+                return Response(
+                    {"message": "Item removed from saved items"}, 
+                    status=status.HTTP_204_NO_CONTENT
+                )
+            except SavedItem.DoesNotExist:
+                print(f"No SavedItem found for user {request.user.username} and item {pk}")
+                return Response(
+                    {"error": "Item was not in your saved items"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except Exception as e:
+            print(f"Error in unsave: {str(e)}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        """
+        Toggle saved status for an item.
+        """
+        item_id = request.data.get('item')
+        if not item_id:
+            return Response(
+                {"error": "Item ID is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            item = Item.objects.get(id=item_id)
+        except Item.DoesNotExist:
+            return Response(
+                {"error": "Item not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if already saved
+        saved = SavedItem.objects.filter(user=request.user, item=item).first()
+        
+        if saved:
+            # If exists, remove it
+            saved.delete()
+            return Response(
+                {"saved": False, "message": "Item removed from saved items"}, 
+                status=status.HTTP_200_OK
+            )
+        else:
+            # If not exists, save it
+            SavedItem.objects.create(user=request.user, item=item)
+            return Response(
+                {"saved": True, "message": "Item saved successfully"}, 
+                status=status.HTTP_201_CREATED
+            )
+    
+    @action(detail=False, methods=['get'])
+    def check(self, request):
+        """
+        Check if an item is saved by the user.
+        """
+        item_id = request.query_params.get('item')
+        if not item_id:
+            return Response(
+                {"error": "Item ID is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        is_saved = SavedItem.objects.filter(
+            user=request.user, 
+            item_id=item_id
+        ).exists()
+        
+        return Response({"is_saved": is_saved}, status=status.HTTP_200_OK)
 
     
 
