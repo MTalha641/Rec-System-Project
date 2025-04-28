@@ -21,7 +21,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 //import EditProduct from "../src/screens/EditProduct";
 //import SavedProduct from "../src/screens/SavedProduct";
 //import Message from "../src/components/Message";
-import ProductDetails from "../components/ProductDetails"; // Make sure this component exists
+ // Make sure this component exists
 //import UploadFourth from "../src/screens/Upload/UploadFourth";
 //import UploadFifth from "../src/screens/Upload/UploadFifth";
 //import EditImages from "../src/components/EditImages";
@@ -160,17 +160,6 @@ const Navigation = () => {
         //     title: "Edit Product",
         //   }}
         // />
-
-        <Stack.Screen
-          name="ProductDetails"
-          component={ProductDetails}
-          options={{
-            headerShadowVisible: false,
-            gestureEnabled: false,
-            headerBackTitleVisible: true,
-            headerTitle: "ProductDetails",
-          }}
-        />
 
         // <Stack.Screen
         //   name="uploadFirst"

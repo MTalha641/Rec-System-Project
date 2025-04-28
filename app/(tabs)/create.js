@@ -1,6 +1,7 @@
 import { useState, useContext } from "react";
 import { router } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
+import * as Location from 'expo-location';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, Alert, Image, TouchableOpacity, ScrollView } from "react-native";
 import { Picker } from "@react-native-picker/picker";
@@ -11,7 +12,7 @@ import CustomButton from "../../components/CustomButton";
 import FormField from "../../components/FormField";
 import { AuthContext } from "../context/AuthContext";
 
-// Categories array as before
+// ... categories array remains the same ...
 const categories = [
   {
     name: "Home and Kitchen Appliances",
@@ -113,7 +114,8 @@ const CreateItem = () => {
   const [form, setForm] = useState({
     title: "",
     price: "",
-    location: "",
+    address: "",    // Detailed address string
+    location: "",   // Will store "latitude,longitude"
     category: "",
     sub_category: "",
     image: null,
@@ -121,22 +123,52 @@ const CreateItem = () => {
   });
 
   const [subcategories, setSubcategories] = useState([]);
+  const { token } = useContext(AuthContext);
 
-  // Access the AuthContext to get the access token
-  const { token} = useContext(AuthContext);
+  // Get current location
+  const getCurrentLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please allow location access to auto-fill coordinates.');
+        return;
+      }
 
-  const openPicker = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ["image/png", "image/jpg", "image/jpeg"],
-    });
-
-    if (!result.canceled) {
-      setForm({
-        ...form,
-        image: result.assets[0],
-      });
+      let location = await Location.getCurrentPositionAsync({});
+      const coordinates = `${location.coords.latitude},${location.coords.longitude}`;
+      setForm(prev => ({
+        ...prev,
+        location: coordinates
+      }));
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get current location');
     }
   };
+
+  // ... openPicker and handleCategoryChange functions remain the same ...
+  const openPicker = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["image/*"],
+      });
+  
+      if (!result.canceled) {
+        const { uri, name, mimeType } = result.assets[0];
+        setForm({
+          ...form,
+          image: {
+            uri: uri.startsWith("file://") ? uri : `file://${uri}`,
+            name: name || "image.jpg",
+            type: mimeType || "image/jpeg",
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error selecting file:", error);
+    }
+  };
+  
 
   const handleCategoryChange = (selectedCategory) => {
     const selectedData = categories.find(
@@ -151,78 +183,65 @@ const CreateItem = () => {
   };
 
   const submit = async () => {
-    console.log("Form Data:", JSON.stringify(form, null, 2)); // Debug log
-    console.log("Token being used for create.js:", token);
-  
     if (
-      form.title === "" ||
-      form.price === "" ||
-      form.location === "" ||
-      form.category === "" ||
-      form.sub_category === "" ||
-      form.description === "" ||
+      !form.title ||
+      !form.price ||
+      !form.address ||
+      !form.location ||
+      !form.category ||
+      !form.sub_category ||
+      !form.description ||
       !form.image
     ) {
-      return Alert.alert("Please provide all fields");
+      Alert.alert("Error", "All fields are required, including address, location coordinates, and an image.");
+      return;
     }
   
     setUploading(true);
+  
     try {
       const formData = new FormData();
       formData.append("title", form.title);
-      formData.append("price", parseInt(form.price, 10)); // Convert price to integer
+      formData.append("price", parseInt(form.price, 10));
+      formData.append("address", form.address);
       formData.append("location", form.location);
       formData.append("category", form.category);
-      formData.append("sub_category", form.sub_category); // Ensure correct field name
+      formData.append("sub_category", form.sub_category);
       formData.append("description", form.description);
   
-      const imageUri = form.image.uri;
-      const imageName = form.image.name || "image.jpg";
-      const imageType = form.image.type || "image/jpeg";
+      const { uri, name, type } = form.image;
   
       formData.append("image", {
-        uri: imageUri,
-        name: imageName,
-        type: imageType,
+        uri: uri.startsWith("file://") ? uri : `file://${uri}`,
+        name: name || "image.jpg",
+        type: type || "image/jpeg",
       });
   
-      const response = await axios.post(
-        `${API_URL}/api/items/create/`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.post(`${API_URL}/api/items/create/`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
   
       if (response.status === 201) {
-        Alert.alert("Success", "Ad uploaded successfully");
+        Alert.alert("Success", "Ad created successfully!");
         router.push("/home");
       } else {
-        throw new Error(response?.data?.message || "Something went wrong.");
+        throw new Error("Something went wrong while creating the ad.");
       }
     } catch (error) {
-      Alert.alert("Error", error.response?.data || error.message);
+      console.error("Error creating ad:", error);
+      Alert.alert("Error", error.message || "Failed to create ad.");
     } finally {
-      setForm({
-        title: "",
-        price: "",
-        location: "",
-        category: "",
-        sub_category: "",
-        image: null,
-        description: "",
-      });
       setUploading(false);
     }
   };
-  
 
   return (
     <SafeAreaView className="bg-primary h-full">
       <ScrollView className="px-4 my-6">
+        {/* ... existing title and price fields remain the same ... */}
         <Text className="text-2xl text-white font-psemibold">Upload Ad</Text>
 
         <FormField
@@ -242,15 +261,30 @@ const CreateItem = () => {
         />
 
         <FormField
-          title="Location"
-          value={form.location}
-          placeholder="Enter the location..."
-          handleChangeText={(e) => setForm({ ...form, location: e })}
+          title="Address"
+          value={form.address}
+          placeholder="Enter detailed address..."
+          handleChangeText={(e) => setForm({ ...form, address: e })}
           otherStyles="mt-4 mb-3"
         />
 
-        {/* Category Dropdown */}
         <View className="mt-4 mb-3">
+          <Text className="text-base text-gray-100 font-pmedium mb-2">Location Coordinates</Text>
+          <FormField
+            value={form.location}
+            placeholder="latitude,longitude"
+            handleChangeText={(e) => setForm({ ...form, location: e })}
+          />
+          <CustomButton
+            title="Get Current Location"
+            handlePress={getCurrentLocation}
+            containerStyles="bg-secondary-500 mt-2"
+          />
+        </View>
+
+        {/* ... rest of the form remains the same ... */}
+                {/* Category Dropdown */}
+                <View className="mt-4 mb-3">
           <Text className="text-base text-gray-100 font-pmedium mb-2">Category</Text>
           <View className="bg-black-100 border border-black-200 rounded-xl">
             <Picker

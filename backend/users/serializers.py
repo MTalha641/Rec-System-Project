@@ -6,11 +6,10 @@ from django.contrib.auth.hashers import make_password, check_password
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = [ 'username', 'email', 'password']
+        fields = [ 'username', 'email', 'password', 'userType', 'interests']
         extra_kwargs = {
             'password': {'write_only': True} 
         }
-        read_only_fields = ['fault_count','is_banned']
 
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data['password'])  
@@ -19,15 +18,15 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()  # Or use 'email' if you prefer
+    email = serializers.CharField()  # Or use 'email' if you prefer
     password = serializers.CharField()
 
     def validate(self, attrs):
-        username = attrs.get('username')
+        email = attrs.get('email')
         password = attrs.get('password')
 
         try:
-            user = User.objects.get(username=username)  # Change to .get(email=email) if using email for login
+            user = User.objects.get(email=email)  # Change to .get(email=email) if using email for login
         except User.DoesNotExist:
             raise serializers.ValidationError("User not found.")
 
@@ -36,3 +35,4 @@ class LoginSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+

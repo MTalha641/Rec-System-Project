@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
-  Image,
   Alert,
   ScrollView,
   TouchableWithoutFeedback,
@@ -10,34 +9,84 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
+  Image,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import moment from "moment";
+import axios from "axios";
+import AuthContext from "./context/AuthContext";
 import racquet from "../assets/images/racquet.jpg";
+// import dummyImage1 from "../assets/images/racquet.jpg";
+// import dummyImage2 from "../assets/images/racquet.jpg";
+// import dummyImage3 from "../assets/images/racquet.jpg";
+import { API_URL } from "@env";
 
 const ReserveProduct = () => {
-  const product = {
-    title: "Sample Product",
-    displayPrice: 1500,
-    imageids: [racquet],
-  };
+  const { productId } = useLocalSearchParams();
+  console.log("Item ID check from params:", productId);
 
+  const { token } = useContext(AuthContext);
+  console.log("Auth Token:", token);
+
+  const router = useRouter();
+
+  const [product, setProduct] = useState({
+    title: "",
+    displayPrice: 0,
+    image: null
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState({});
-  const [cardDetails, setCardDetails] = useState(null);
+
+  // Fetch product data on component mount
+  useEffect(() => {
+    const fetchProductData = async () => {
+      try {
+        setIsDataLoading(true);
+        const response = await axios.get(`${API_URL}/api/items/get/${productId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("Product data fetched:", response.data);
+        
+        
+        setProduct({
+          title: response.data.title || "Product Name",
+          displayPrice: response.data.price || 0,
+          // adding image here
+          image: response.data.image,
+        });
+      } catch (error) {
+        console.error("Error fetching product:", error.response?.data || error.message);
+        Alert.alert(
+          "Error",
+          "Failed to load product details. Please try again."
+        );
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+
+    if (productId && token) {
+      fetchProductData();
+    }
+  }, [productId, token]);
 
   const handleDateSelection = (day) => {
+    console.log("Selected Date:", day.dateString);
     if (!selectedRange.startDate) {
       setSelectedRange({ startDate: day.dateString });
     } else if (!selectedRange.endDate) {
-      setSelectedRange((prev) => ({
-        ...prev,
-        endDate: day.dateString,
-      }));
+      setSelectedRange((prev) => ({ ...prev, endDate: day.dateString }));
     } else {
       setSelectedRange({ startDate: day.dateString });
     }
+    console.log("Updated Date Range:", selectedRange);
   };
 
   const generateMarkedDates = () => {
@@ -55,7 +104,6 @@ const ReserveProduct = () => {
         color: "#2a9d8f",
         textColor: "white",
       };
-
       const start = moment(selectedRange.startDate);
       const end = moment(selectedRange.endDate);
       for (
@@ -72,40 +120,87 @@ const ReserveProduct = () => {
     return markedDates;
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!selectedRange.startDate || !selectedRange.endDate) {
-      return Alert.alert("Empty fields", "Please fill all fields.");
+      return Alert.alert("Error", "Please select both start and end dates.");
     }
 
     setIsLoading(true);
+    const totalDays =
+      moment(selectedRange.endDate).diff(selectedRange.startDate, "days") + 1;
+    const totalPrice = product.displayPrice * totalDays;
 
-    setTimeout(() => {
-      Alert.alert("Success", "Product Reserved Successfully");
+    console.log("Booking request data:", {
+      item_id: productId,
+      start_date: selectedRange.startDate,
+      end_date: selectedRange.endDate,
+    });
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/bookings/confirm/`,
+        {
+          item_id: productId,
+          start_date: selectedRange.startDate,
+          end_date: selectedRange.endDate,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Booking Request successful:", response.data);
+      Alert.alert("Success", "Booking Request Sent Successfully, Kindly Wait for Approval. ", [
+        { text: "OK", onPress: () => router.push("/home") },
+      ]);
+    } catch (error) {
+      console.error("Booking error:", error.response?.data || error.message);
+      Alert.alert(
+        "Error",
+        error.response?.data?.message ||
+          "Failed to book item. Please try again."
+      );
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
+
+  if (isDataLoading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#2a9d8f" />
+        <Text style={styles.loadingText}>Loading product details...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView className="h-full" style={styles.container}>
-        <ScrollView style={styles.scrollView}>
-          <Image
-            style={styles.productImage}
-            resizeMode="center"
-            source={product.imageids[0]}
+      <SafeAreaView className="flex-1" style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlatList
+            data={product.imageids}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <Image
+                source={item}
+                style={styles.productImage}
+                resizeMode="center"
+              />
+            )}
           />
-
-          <Text style={styles.productTitle}>
-            {product.title.length > 30
-              ? product.title.slice(0, 30) + "..."
-              : product.title}
-          </Text>
+          <Text style={styles.productTitle}>{product.title}</Text>
           <Text style={styles.productPrice}>
-            PKR {product.displayPrice}
-            <Text style={styles.pricePerDay}> /day</Text>
+            PKR {product.displayPrice}{" "}
+            <Text style={styles.pricePerDay}>/day</Text>
           </Text>
-
-          {/* Date Picker */}
           <View style={styles.datePickerContainer}>
             <Text style={styles.sectionTitle}>Select Dates</Text>
             <View style={styles.calendarContainer}>
@@ -130,8 +225,6 @@ const ReserveProduct = () => {
               />
             </View>
           </View>
-
-          {/* Price Details */}
           <View style={styles.priceDetailsContainer}>
             <Text style={styles.sectionTitle}>Price Details</Text>
             <View style={styles.priceRow}>
@@ -141,7 +234,7 @@ const ReserveProduct = () => {
                   {moment(selectedRange.endDate).diff(
                     selectedRange.startDate,
                     "days"
-                  )}
+                  ) + 1}
                 </Text>
               ) : (
                 <Text style={styles.errorText}>Please select dates</Text>
@@ -165,10 +258,10 @@ const ReserveProduct = () => {
                   ? Math.floor(
                       product.displayPrice * 0.1 +
                         product.displayPrice *
-                          moment(selectedRange.endDate).diff(
+                          (moment(selectedRange.endDate).diff(
                             selectedRange.startDate,
                             "days"
-                          )
+                          ) + 1)
                     )
                   : Math.floor(
                       product.displayPrice * 0.1 + product.displayPrice
@@ -177,7 +270,6 @@ const ReserveProduct = () => {
             </View>
           </View>
 
-          {/* Confirm Button */}
           <TouchableOpacity
             style={styles.confirmButton}
             onPress={handleConfirmPayment}
@@ -186,7 +278,7 @@ const ReserveProduct = () => {
             {isLoading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.confirmButtonText}>Confirm and Pay</Text>
+              <Text style={styles.confirmButtonText}>Confirm Request</Text>
             )}
           </TouchableOpacity>
         </ScrollView>
@@ -200,28 +292,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#161622",
   },
-  scrollView: {
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#CDCDE0",
+    fontSize: 16,
+  },
+  scrollContent: {
     padding: 16,
   },
   productImage: {
-    width: "100%",
+    width: 300,
     height: 200,
-    borderRadius: 30,
-    marginBottom: 16,
+    borderRadius: 20,
+    marginRight: 20,
+    marginLeft: 10,
   },
   productTitle: {
-    fontSize: 20,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#CDCDE0",
     marginBottom: 8,
+    marginTop: 25,
   },
   productPrice: {
-    fontSize: 18,
+    fontSize: 20,
     color: "#2a9d8f",
     marginBottom: 16,
   },
   pricePerDay: {
-    fontSize: 14,
+    fontSize: 19,
     color: "#CDCDE0",
   },
   datePickerContainer: {
@@ -229,7 +332,7 @@ const styles = StyleSheet.create({
   },
   calendarContainer: {
     backgroundColor: "#1E1E2D",
-    borderRadius: 10,
+    borderRadius: 20,
     padding: 10,
   },
   sectionTitle: {
@@ -273,6 +376,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
+    marginTop: 16,
   },
   confirmButtonText: {
     color: "#fff",

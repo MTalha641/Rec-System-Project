@@ -1,25 +1,23 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
-import React, { useState } from "react";
+import React from "react";
+import { router } from "expo-router";
 
-const CategoryButton = ({ Icon, IconName, Upload, navigation }) => {
-  const [selectedCategory, setSelectedCategory] = useState(null);
-
+const CategoryButton = ({ Icon, IconName, Upload }) => {
   return (
     <TouchableOpacity
       style={{ marginRight: 8 }}
       onPress={() => {
-        setSelectedCategory(IconName);
         if (Upload) {
-          // Handle upload functionality if needed
+          // Upload logic if needed
         } else {
-          navigation.navigate("CategoriesProduct", {
-            category: IconName, // Passing the category name to the next screen
+          router.push({
+            pathname: "/category/[categoryName]",
+            params: { categoryName: IconName },
           });
         }
       }}
     >
-      {/* Wrap the icon and text in a single View to align them vertically */}
-      <View style={{ alignItems: "center" }}> 
+      <View style={{ alignItems: "center" }}>
         <View
           style={{
             height: 65,
@@ -28,21 +26,12 @@ const CategoryButton = ({ Icon, IconName, Upload, navigation }) => {
             justifyContent: "center",
             alignItems: "center",
             backgroundColor: "#F4F4F4",
-            marginBottom: 10, // Added to create space between icon and text
+            marginBottom: 10,
           }}
         >
-          {/* Display the icon using Image component */}
           <Image source={Icon} style={{ height: 40, width: 40 }} />
         </View>
-        <Text 
-          style={{ 
-
-            textAlign: "center", 
-            fontSize: 14, 
-            fontWeight: "500"  // Added font weight for emphasis
-          }}
-          className= "text-gray-100"
-        >
+        <Text className="text-gray-100" style={{ textAlign: "center", fontSize: 14, fontWeight: "500" }}>
           {IconName}
         </Text>
       </View>

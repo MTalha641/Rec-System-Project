@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import React, { useEffect } from 'react'
 import {Slot, SplashScreen, Stack} from 'expo-router'
 import {useFonts} from 'expo-font'
+import { AuthProvider } from './context/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,14 +29,27 @@ const RootLayout = () => {
   if(!fontsLoaded && !error) return null;
 
   return (
+    <AuthProvider>
     <Stack>
-        <Stack.Screen name='index' options={{headerShown: false}}/>
-        <Stack.Screen name='(auth)' options={{headerShown: false}}/>
-        <Stack.Screen name='(tabs)' options={{headerShown: false}}/>
-        <Stack.Screen name='/search/[query]' options={{headerShown: false}}/>
-        <Stack.Screen name="ProductDetails" options={{ headerShown: false }} />
-        
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="search/[query]" options={{ headerShown: false }} />
+      {/* <Stack.Screen name="ProductDetails/[id]" options={{ headerShown: false }} /> */}
+      <Stack.Screen name="ReserveProduct" options={{ headerShown: false }} />
+      <Stack.Screen name="product/[id]" options={{headerShown:false}} />
+      <Stack.Screen name="Paymentgateway" options={{ headerShown: false }} />
+      <Stack.Screen name="Riderscreen" options={{ headerShown: false }} />
+      <Stack.Screen name="MyProductsList" options={{ headerShown: false }} />
+      <Stack.Screen name="MySavedProducts" options={{ headerShown: false }} />
+      <Stack.Screen name="ProductReview" options={{ headerShown: false }} />
+      <Stack.Screen name="DisputeForm" options={{ headerShown: false }} />
+      <Stack.Screen name="category/[categoryName]" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
     </Stack>
+  </AuthProvider>
+  
+    
   )
 }
 
