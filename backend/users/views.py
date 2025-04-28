@@ -43,6 +43,10 @@ class LoginView(generics.GenericAPIView):
            
             if user.check_password(password):
                 # Generate JWT tokens
+                if user.is_banned:
+                     return Response({
+                    'error': 'Your account has been banned due to multiple violations'
+                }, status=status.HTTP_403_FORBIDDEN)
                 refresh = RefreshToken.for_user(user)
 
                 # Return tokens and user information

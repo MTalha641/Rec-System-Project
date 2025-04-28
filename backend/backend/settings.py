@@ -33,9 +33,7 @@ SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = ['172.16.86.60'] #change everytime a different connection/netwrok is made
-
+ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost', '192.168.100.15','192.168.174.1','10.206.70.1','10.59.224.1','192.168.18.49','192.168.18.254']
 
 # Application definition
 
@@ -55,10 +53,7 @@ INSTALLED_APPS = [
     'recommendations',
     'corsheaders',
     'rest_framework_simplejwt',
-
-    
-    
-
+    'disputes'
 ]
 
 REST_FRAMEWORK = {
@@ -144,6 +139,17 @@ USE_I18N = True
 
 USE_TZ = True
 
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://192.168.100.15:8001',
+    'http://localhost:8000',
+    'http://10.206.70.1:8000',
+    'http://192.168.18.49:8000',
+    'http://192.168.18.254:8000'
+
+
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/

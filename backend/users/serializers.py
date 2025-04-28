@@ -10,6 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True} 
         }
+        read_only_fields = ['fault_count','is_banned']
 
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data['password'])  

@@ -23,6 +23,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/users/',include('users.urls')),
     path('api/items/',include('items.urls')),
-    
+    path('api/recommendations/', include('recommendations.urls')),
+    path('api/bookings/',include('bookings.urls')),
+    path('api/reviews/',include('reviews.urls')),
+    path('api/payments/', include('payments.urls')),
+    path('api/disputes/',include('disputes.urls'))
+
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
