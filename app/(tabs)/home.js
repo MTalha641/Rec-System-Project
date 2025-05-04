@@ -11,7 +11,21 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { router } from 'expo-router';
-import { Bell } from 'lucide-react-native';
+import { 
+  Bell, 
+  Home as HomeIcon, 
+  Sofa, 
+  Smartphone, 
+  Tent, 
+  PartyPopper, 
+  Baby, 
+  ToolIcon, 
+  Car, 
+  HeartPulse, 
+  GraduationCap, 
+  Briefcase, 
+  Lamp
+} from 'lucide-react-native';
 
 import logo from '../../assets/images/RLogo.png';
 import Search from '../../components/Search';
@@ -21,6 +35,22 @@ import ProductCard from '../../components/ProductCard';
 import ShowCategories from '../../components/ShowCategories';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '@env';
+
+// Categories list with relevant icons
+const categories = [
+  { label: "Home and Kitchen Appliances", value: "Home and Kitchen Appliances", icon: HomeIcon },
+  { label: "Furniture", value: "Furniture", icon: Sofa },
+  { label: "Electronics and Gadgets", value: "Electronics and Gadgets", icon: Smartphone },
+  { label: "Outdoor and Sports Equipment", value: "Outdoor and Sports Equipment", icon: Tent },
+  { label: "Event and Party Supplies", value: "Event and Party Supplies", icon: PartyPopper },
+  { label: "Baby and Kids Items", value: "Baby and Kids Items", icon: Baby },
+  { label: "Tools and Equipment", value: "Tools and Equipment", icon: ToolIcon },
+  { label: "Vehicles", value: "Vehicles", icon: Car },
+  { label: "Health and Wellness", value: "Health and Wellness", icon: HeartPulse },
+  { label: "Educational Resources", value: "Educational Resources", icon: GraduationCap },
+  { label: "Office Equipment", value: "Office Equipment", icon: Briefcase },
+  { label: "Decor and Seasonal Items", value: "Decor and Seasonal Items", icon: Lamp },
+];
 
 const Home = () => {
   const { user, token } = useContext(AuthContext);
@@ -83,6 +113,11 @@ const Home = () => {
       fetchUnreadNotificationCount();
     }
   }, [token]);
+
+  const handleCategorySelect = (category) => {
+    // Navigate to category specific page without filtering on home page
+    router.push(`/category/${category.value}`);
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -159,7 +194,7 @@ const Home = () => {
 
             <View className="w-full">
               <Text className="text-lg font-pregular mb-1 text-white">Categories</Text>
-              <ShowCategories />
+              <ShowCategories categories={categories} onSelectCategory={handleCategorySelect} />
             </View>
 
             <View className="w-full flex-1 pt-2 pb-4">

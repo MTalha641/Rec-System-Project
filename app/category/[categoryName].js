@@ -7,38 +7,36 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
+    RefreshControl,
   } from "react-native";
   import React, { useState, useEffect, useContext } from "react";
-  import { useLocalSearchParams, router } from "expo-router";
+  import { useLocalSearchParams, useRouter } from "expo-router";
   import { Ionicons } from "@expo/vector-icons";
   import axios from "axios";
   import { API_URL } from "@env";
   import { SafeAreaView } from "react-native-safe-area-context";
   import { AuthContext } from "../context/AuthContext";
+  import { ChevronLeft, Plus } from 'lucide-react-native';
+  
+  import ProductCard from '../../components/ProductCard';
+  import EmptyState from '../../components/EmptyState';
   
   const CategoryPage = () => {
     const { categoryName } = useLocalSearchParams();
+    const router = useRouter();
     const { token } = useContext(AuthContext);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-  
-    useEffect(() => {
-      fetchCategoryItems();
-    }, [categoryName]);
+    const [refreshing, setRefreshing] = useState(false);
   
     const fetchCategoryItems = async () => {
       if (!token) {
         console.warn("No token available!");
-        setLoading(false);
         return;
       }
   
-      setLoading(true);
-      setError(null);
-  
       try {
-        // Get all items
+        // Use the correct endpoint for getting all items
         const response = await axios.get(`${API_URL}/api/items/getallitems/`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -46,81 +44,80 @@ import {
         });
   
         if (response?.data) {
-          // Filter items by category name
+          // Filter items by category client-side
           const filteredItems = response.data.filter(
-            (item) => item.category === categoryName
+            (item) => item.category && item.category.includes(categoryName)
           );
           setItems(filteredItems);
-        } else {
-          console.warn("No data received from the API");
-          setItems([]);
         }
       } catch (error) {
-        console.error(
-          "Error fetching category items:",
-          error.response?.data || error.message
-        );
-        setError("Failed to load items. Please try again.");
+        console.error("Error fetching category items:", error.response?.data || error.message);
       } finally {
         setLoading(false);
       }
     };
   
-    const ProductCard = ({ item }) => (
-      <TouchableOpacity 
-        style={styles.card}
-        onPress={() => router.push(`/product/${item.id}`)}
-      >
-        <Image 
-          source={item.image ? { uri: `${API_URL}${item.image}` } : require("../../assets/images/RLogo.png")} 
-          resizeMode="contain" 
-          style={styles.image} 
-        />
-        <View style={styles.content}>
-          <Text style={styles.title}>
-            {item.title.slice(0, 25)}
-            {item.title.length > 25 && "..."}
-          </Text>
-          <Text style={styles.price}>PKR {item.price}</Text>
-          <Text style={styles.category}>{item.sub_category}</Text>
-          <View style={styles.bottomRow}>
-            <TouchableOpacity
-              onPress={() => router.push(`/product/${item.id}`)}
-              style={styles.viewButton}
-            >
-              <Text style={styles.buttonText}>View</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
+    useEffect(() => {
+      fetchCategoryItems();
+    }, [categoryName, token]);
+  
+    const onRefresh = async () => {
+      setRefreshing(true);
+      await fetchCategoryItems();
+      setRefreshing(false);
+    };
+
+    const navigateToUpload = () => {
+      router.push("/upload");
+    };
   
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
+      <SafeAreaView className="bg-primary h-full">
+        <View className="flex-row items-center p-4 border-b border-black-200">
+          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+            <ChevronLeft color="white" size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{categoryName}</Text>
+          <Text className="text-xl font-psemibold text-white flex-1">{categoryName}</Text>
         </View>
   
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-          </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#ffffff" />
           </View>
         ) : (
           <FlatList
             data={items}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => <ProductCard item={item} />}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No items found in this category.</Text>
+            keyExtractor={(item) =>
+              item.productID
+                ? item.productID.toString()
+                : item.id?.toString() || item.title?.toString() || Math.random().toString()
             }
-            contentContainerStyle={{ paddingBottom: 16 }}
+            renderItem={({ item }) => (
+              <View style={{ flex: 1 / 2, padding: 10 }}>
+                <ProductCard product={item} />
+              </View>
+            )}
+            numColumns={2}
+            contentContainerStyle={{
+              paddingHorizontal: 10,
+              paddingTop: 10,
+            }}
+            columnWrapperStyle={{
+              justifyContent: 'space-between',
+            }}
+            ListEmptyComponent={
+              <View className="flex-1 items-center justify-center mt-10">
+                <EmptyState title={`No items found in ${categoryName}`} />
+                <TouchableOpacity 
+                  onPress={navigateToUpload}
+                  className="flex-row items-center bg-secondary px-4 py-2 mt-4 rounded-md"
+                >
+                  <Plus color="white" size={18} />
+                  <Text className="text-white font-psemibold ml-2">Add {categoryName} Item</Text>
+                </TouchableOpacity>
+              </View>
+            }
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           />
         )}
       </SafeAreaView>

@@ -22,7 +22,23 @@ const ProductCard = ({ product }) => {
     );
   }
 
-  const productImage = product.image;
+  // Format the image URL correctly
+  const formatImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    
+    // If it's already a full URL, return it
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Make sure API_URL doesn't have a trailing slash and imagePath doesn't have a leading slash
+    const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+    const cleanImagePath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    
+    return `${baseUrl}${cleanImagePath}`;
+  };
+
+  const imageUrl = formatImageUrl(product.image);
 
   return (
     <View
@@ -35,9 +51,9 @@ const ProductCard = ({ product }) => {
       }}
     >
       <Pressable onPress={handlePress}>
-        {productImage ? (
+        {imageUrl ? (
           <Image
-            source={{ uri: `${API_URL}${productImage}` }}
+            source={{ uri: imageUrl }}
             className="w-full"
             resizeMode="cover"
             style={{
@@ -45,6 +61,7 @@ const ProductCard = ({ product }) => {
               borderTopRightRadius: 16,
               height: 120,
             }}
+            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
           />
         ) : (
           <View
@@ -53,6 +70,8 @@ const ProductCard = ({ product }) => {
               backgroundColor: "#e0e0e0",
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
+              justifyContent: 'center',
+              alignItems: 'center'
             }}
           >
             <Text className="text-center text-gray-500">No Image</Text>

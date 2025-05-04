@@ -1,30 +1,44 @@
 import React from "react";
 import { View, FlatList } from "react-native";
 import CategoryButton from "./CategoryButton";
-import Furniture from '../assets/icons/living-room.png';
+import { ToolIcon, Settings, Radio, Shirt, Boot, UtensilsCrossed, Sofa, Monitor, MoreHorizontal } from "lucide-react-native";
 
-const ShowCategories = () => {
-  const categories = [
-    { name: "Tools", icon: Furniture },
-    { name: "Equipment", icon: Furniture },
-    { name: "Appliances", icon: Furniture },
-    { name: "Apparel", icon: Furniture },
-    { name: "Footwear", icon: Furniture },
-    { name: "Kitchenware", icon: Furniture },
-    { name: "Furniture", icon: Furniture },
-    { name: "Computing", icon: Furniture },
-    { name: "Others", icon: Furniture },
+const ShowCategories = ({ categories = [], onSelectCategory }) => {
+  const defaultCategories = [
+    { name: "Tools", icon: ToolIcon },
+    { name: "Equipment", icon: Settings },
+    { name: "Appliances", icon: Radio },
+    { name: "Apparel", icon: Shirt },
+    { name: "Footwear", icon: Boot },
+    { name: "Kitchenware", icon: UtensilsCrossed },
+    { name: "Furniture", icon: Sofa },
+    { name: "Computing", icon: Monitor },
+    { name: "Others", icon: MoreHorizontal },
   ];
+
+  // If categories prop is provided and not empty, use them
+  const displayCategories = categories.length > 0 
+    ? categories.map(cat => ({
+        name: cat.label,
+        value: cat.value,
+        icon: cat.icon,
+      }))
+    : defaultCategories;
 
   return (
     <View className="mt-4">
       <FlatList
-        data={categories}
+        data={displayCategories}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.name}
+        keyExtractor={(item) => item.name || item.value}
         renderItem={({ item }) => (
-          <CategoryButton Icon={item.icon} IconName={item.name} />
+          <CategoryButton 
+            IconComponent={item.icon}
+            IconName={item.name} 
+            categoryValue={item.value} 
+            onPress={() => onSelectCategory && onSelectCategory({ label: item.name, value: item.value || item.name })}
+          />
         )}
       />
     </View>

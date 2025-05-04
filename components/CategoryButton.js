@@ -1,21 +1,27 @@
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
 import { router } from "expo-router";
 
-const CategoryButton = ({ Icon, IconName, Upload }) => {
+const CategoryButton = ({ IconComponent, IconName, Upload, categoryValue, isSelected, onPress }) => {
+  const handlePress = () => {
+    if (Upload) {
+      // Upload logic if needed
+    } else if (onPress) {
+      // Use custom press handler if provided
+      onPress();
+    } else {
+      // Default navigation behavior
+      router.push({
+        pathname: "/category/[categoryName]",
+        params: { categoryName: categoryValue || IconName },
+      });
+    }
+  };
+
   return (
     <TouchableOpacity
       style={{ marginRight: 8 }}
-      onPress={() => {
-        if (Upload) {
-          // Upload logic if needed
-        } else {
-          router.push({
-            pathname: "/category/[categoryName]",
-            params: { categoryName: IconName },
-          });
-        }
-      }}
+      onPress={handlePress}
     >
       <View style={{ alignItems: "center" }}>
         <View
@@ -25,13 +31,23 @@ const CategoryButton = ({ Icon, IconName, Upload }) => {
             borderRadius: 999,
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: "#F4F4F4",
+            backgroundColor: isSelected ? "#6366f1" : "#F4F4F4",
             marginBottom: 10,
+            borderWidth: isSelected ? 2 : 0,
+            borderColor: "#a5b4fc",
           }}
         >
-          <Image source={Icon} style={{ height: 40, width: 40 }} />
+          {IconComponent && (
+            <IconComponent 
+              size={32}
+              color={isSelected ? "#ffffff" : "#333333"}
+            />
+          )}
         </View>
-        <Text className="text-gray-100" style={{ textAlign: "center", fontSize: 14, fontWeight: "500" }}>
+        <Text 
+          className={`${isSelected ? "text-secondary" : "text-gray-100"}`} 
+          style={{ textAlign: "center", fontSize: 14, fontWeight: "500" }}
+        >
           {IconName}
         </Text>
       </View>
