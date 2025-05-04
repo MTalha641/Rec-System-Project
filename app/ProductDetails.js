@@ -18,6 +18,8 @@
 // import racquet from "../assets/images/racquet.jpg";
 // import MapView, { Marker } from "react-native-maps";
 // import Review from "../components/Review";
+// import axios from "axios";
+// import { API_URL } from "@env";
 
 // const { width } = Dimensions.get("window");
 
@@ -26,8 +28,9 @@
 //   const [userEmail] = useState("dummyuser@example.com");
 //   const [displayPrice, setDisplayPrice] = useState(100);
 //   const [isSaved, setIsSaved] = useState(false);
+//   const [loading, setLoading] = useState(true);
 //   const {id} = useLocalSearchParams();
-//   const [product,setProduct] = useState(null);
+//   const [product, setProduct] = useState(null);
 
 
 //   useEffect(() => {
@@ -46,20 +49,15 @@
 //     fetchProductDetails();
 //   }, [id]);
   
-//   // const product = {
-//   //   productID: "123",
-//   //   title: "Table Tennis Racquet",
-//   //   description: "This is a sample product description.",
-//   //   price: 100,
-//   //   rating: 4.5,
-//   //   totalReviews: 10,
-//   //   imageIds: [racquet],
-//   //   latitude: 25.053109,
-//   //   longitude: 67.121006,
-//   //   timeStamp: new Date(),
-//   //   email: "renter@example.com",
-//   // };
-//   const data = product.imageIds;
+//   if (loading || !product) {
+//     return (
+//       <View className="flex-1 justify-center items-center bg-primary">
+//         <Text className="text-white">Loading product details...</Text>
+//       </View>
+//     );
+//   }
+
+//   const data = product.imageIds || [racquet];
 
 //   const handleSaveProduct = () => {
 //     setIsSaved(!isSaved);
@@ -167,7 +165,6 @@
 //             <Text style={{ fontSize: 14, color: "white" }}>
 //               {" "}
 //               {moment(product.timeStamp).format("MMMM D, YYYY")}{" "}
-//               {/* Display current date */}
 //             </Text>
 //           </View>
 //           <Text className="text-gray-100 text-lg font-pregular mb-3">
@@ -185,7 +182,7 @@
 //               borderRadius: 10,
 //               borderColor: "black",
 //               borderWidth: 0.2,
-//               marginBottom: "10px",
+//               marginBottom: 10,
 //             }}
 //             region={{
 //               latitude: product.latitude,
@@ -233,7 +230,7 @@
 //           style={{
 //             flexDirection: "row",
 //             justifyContent: "space-between",
-//             borderRadius: "15px",
+//             borderRadius: 15,
 //           }}
 //         >
 //           <Button title="Day" onPress={() => setDisplayPrice(100)} />

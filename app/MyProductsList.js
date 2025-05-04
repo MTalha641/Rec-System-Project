@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,19 +43,24 @@ const MyProductsList = () => {
         'Content-Type': 'application/json'
       };
 
+      console.log("Fetching reservations from:", `${API_URL}/api/bookings/reservations/`);
       const response = await axios.get(
         `${API_URL}/api/bookings/reservations/`, 
         { headers }
       );
       
+      console.log("API Response:", response.data);
+      
       if (response.data && Array.isArray(response.data)) {
+        console.log("Setting reservations:", response.data);
         setReservations(response.data);
       } else {
-        console.error("API did not return an array");
+        console.error("API did not return an array:", response.data);
         setReservations([]);
       }
     } catch (error) {
       console.error("Error fetching reservations:", error.message);
+      console.error("Error response:", error.response?.data);
       setReservations([]);
     } finally {
       setLoading(false);
@@ -113,58 +119,81 @@ const MyProductsList = () => {
   }, [token, reservations.length, refreshReservations]);
 
   // Memoized reservation card component
-  const ReservationCard = memo(({ item }) => (
-    <View
-      key={item.id || `reservation-${Math.random()}`}
-      className="bg-[#1E1E2D] rounded-lg p-4 mb-4 shadow-md"
-    >
-      <View className="flex-row items-center">
-        <Image
-          source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
-          className="w-16 h-16 rounded-lg mr-4"
-          style={{ width: 64, height: 64, borderRadius: 8, marginRight: 15 }}
-        />
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-white">
-            {item.item_name}
-          </Text>
-          <Text className="text-white">
-            Owner: {item.owner_name}
-          </Text>
-          {item.start_date && item.end_date && (
-            <Text className="text-xs text-gray-400">
-              {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+  const ReservationCard = memo(({ item }) => {
+    console.log("Rendering Reservation Card with item:", {
+      id: item.id,
+      total_price: item.total_price,
+      item_name: item.item_name,
+      start_date: item.start_date,
+      end_date: item.end_date
+    });
+    
+    return (
+      <View
+        key={item.id || `reservation-${Math.random()}`}
+        className="bg-[#1E1E2D] rounded-lg p-4 mb-4 shadow-md"
+      >
+        <View className="flex-row items-center">
+          <Image
+            source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
+            className="w-16 h-16 rounded-lg mr-4"
+            style={{ width: 64, height: 64, borderRadius: 8, marginRight: 15 }}
+          />
+          <View className="flex-1">
+            <Text className="text-lg font-semibold text-white">
+              {item.item_name}
             </Text>
-          )}
-          {item.total_price && (
-            <Text className="text-blue-400">
-              Total: PKR {item.total_price}
+            <Text className="text-white">
+              Owner: {item.owner_name}
             </Text>
-          )}
+            {item.start_date && item.end_date && (
+              <Text className="text-xs text-gray-400">
+                {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+              </Text>
+            )}
+            {item.total_price && (
+              <Text className="text-blue-400">
+                Total: PKR {item.total_price}
+              </Text>
+            )}
+          </View>
         </View>
+        {selectedTab === "reservation" && (
+          <TouchableOpacity
+            className="mt-2 bg-green-500 p-2 rounded-lg"
+            onPress={() => {
+              console.log("Make Payment button clicked with item:", {
+                id: item.id,
+                total_price: item.total_price,
+                item_name: item.item_name
+              });
+              router.push({
+                pathname: '/Paymentgateway',
+                query: {
+                  bookingId: item.id,
+                  amount: item.total_price
+                }
+              });
+            }}
+          >
+            <Text className="text-white text-center">
+              Make Payment
+            </Text>
+          </TouchableOpacity>
+        )}
+        {selectedTab === "completed" && (
+          <TouchableOpacity
+            className="mt-2 bg-red-500 p-2 rounded-lg"
+            onPress={() => router.push('DisputeForm')}
+          >
+            <Text className="text-white text-center">
+              File Dispute
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
-      {selectedTab === "reservation" && (
-        <TouchableOpacity
-          className="mt-2 bg-green-500 p-2 rounded-lg"
-          onPress={() => router.push('Paymentgateway')}
-        >
-          <Text className="text-white text-center">
-            Make Payment
-          </Text>
-        </TouchableOpacity>
-      )}
-      {selectedTab === "completed" && (
-        <TouchableOpacity
-          className="mt-2 bg-red-500 p-2 rounded-lg"
-          onPress={() => router.push('DisputeForm')}
-        >
-          <Text className="text-white text-center">
-            File Dispute
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  ));
+    );
+  });
 
   // Handlers for tab selection
   const handleReservationTab = useCallback(() => {

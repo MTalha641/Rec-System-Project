@@ -50,8 +50,42 @@ const Bookmark = () => {
         axios.get(`${API_URL}/api/bookings/myrequests/`, { headers })
       ]);
       
-      setIncomingRequests(incomingResponse.data);
-      setMyRequests(myRequestsResponse.data);
+      // Process incoming requests to check for expired items (older than 24 hours)
+      const processedIncomingRequests = incomingResponse.data.map(request => {
+        if (request.status === 'pending') {
+          // Check if request is older than 24 hours
+          const requestDate = new Date(request.created_at || request.request_date || request.date);
+          const currentDate = new Date();
+          const timeDifference = currentDate - requestDate;
+          const hoursDifference = timeDifference / (1000 * 60 * 60);
+          
+          // If request is older than 24 hours, mark as expired
+          if (hoursDifference > 24) {
+            return { ...request, status: 'expired' };
+          }
+        }
+        return request;
+      });
+
+      // Process my outgoing requests to check for expired items (older than 24 hours)
+      const processedMyRequests = myRequestsResponse.data.map(request => {
+        if (request.status === 'pending') {
+          // Check if request is older than 24 hours
+          const requestDate = new Date(request.created_at || request.request_date || request.date);
+          const currentDate = new Date();
+          const timeDifference = currentDate - requestDate;
+          const hoursDifference = timeDifference / (1000 * 60 * 60);
+          
+          // If request is older than 24 hours, mark as expired
+          if (hoursDifference > 24) {
+            return { ...request, status: 'expired' };
+          }
+        }
+        return request;
+      });
+      
+      setIncomingRequests(processedIncomingRequests);
+      setMyRequests(processedMyRequests);
     } catch (error) {
       console.error("Error fetching bookmarks:", error.message);
     } finally {
@@ -70,7 +104,9 @@ const Bookmark = () => {
       pendingIncoming: incomingRequests.filter(item => item.status === 'pending'),
       pendingOutgoing: myRequests.filter(item => item.status === 'pending'),
       approvedIncoming: incomingRequests.filter(item => item.status === 'approved'),
-      approvedOutgoing: myRequests.filter(item => item.status === 'approved')
+      approvedOutgoing: myRequests.filter(item => item.status === 'approved'),
+      expiredIncoming: incomingRequests.filter(item => item.status === 'expired'),
+      expiredOutgoing: myRequests.filter(item => item.status === 'expired')
     };
   }, [incomingRequests, myRequests]);
 
@@ -187,6 +223,7 @@ const Bookmark = () => {
               status === 'approved' ? styles.statusApproved : 
               status === 'pending' ? styles.statusPending : 
               status === 'rejected' ? styles.statusRejected : 
+              status === 'expired' ? styles.statusExpired : 
               styles.statusDefault]}>
               <Text style={styles.statusText}>
                 {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
@@ -247,6 +284,7 @@ const Bookmark = () => {
               status === 'approved' ? styles.statusApproved : 
               status === 'pending' ? styles.statusPending : 
               status === 'rejected' ? styles.statusRejected : 
+              status === 'expired' ? styles.statusExpired : 
               styles.statusDefault]}>
               <Text style={styles.statusText}>
                 {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
@@ -344,6 +382,41 @@ const Bookmark = () => {
                   />
                 ))
               )}
+              
+              {/* Expired Requests Section */}
+              {(filteredData.expiredIncoming.length > 0 || filteredData.expiredOutgoing.length > 0) && (
+                <>
+                  <Text style={[styles.sectionTitle, styles.sectionSpacing]}>Expired Requests</Text>
+                  
+                  {/* Incoming expired requests */}
+                  {filteredData.expiredIncoming.length > 0 && (
+                    <>
+                      <Text style={styles.subSectionTitle}>Incoming Expired</Text>
+                      {filteredData.expiredIncoming.map(item => (
+                        <IncomingRequestCard 
+                          key={getBookingId(item) || `incoming-expired-${Math.random()}`} 
+                          item={item}
+                        />
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Outgoing expired requests */}
+                  {filteredData.expiredOutgoing.length > 0 && (
+                    <>
+                      <Text style={[styles.subSectionTitle, filteredData.expiredIncoming.length > 0 ? styles.sectionSpacing : null]}>
+                        Outgoing Expired
+                      </Text>
+                      {filteredData.expiredOutgoing.map(item => (
+                        <MyRequestCard 
+                          key={getBookingId(item) || `mine-expired-${Math.random()}`} 
+                          item={item}
+                        />
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
             </>
           ) : (
             <>
@@ -354,7 +427,7 @@ const Bookmark = () => {
               ) : (
                 <>
                   {/* Approved items that others requested from me */}
-                  {filteredData.approvedIncoming.length > 0 && (
+                  {/* {filteredData.approvedIncoming.length > 0 && (
                     <>
                       <Text style={styles.subSectionTitle}>Items I'm Renting Out</Text>
                       {filteredData.approvedIncoming.map(item => (
@@ -364,7 +437,7 @@ const Bookmark = () => {
                         />
                       ))}
                     </>
-                  )}
+                  )} */}
                   
                   {/* Approved items that I requested from others */}
                   {filteredData.approvedOutgoing.length > 0 && (
@@ -498,6 +571,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(231, 76, 60, 0.2)',
     borderWidth: 1,
     borderColor: '#e74c3c',
+  },
+  statusExpired: {
+    backgroundColor: 'rgba(127, 140, 141, 0.2)',
+    borderWidth: 1,
+    borderColor: '#7f8c8d',
   },
   statusDefault: {
     backgroundColor: 'rgba(189, 195, 199, 0.2)',

@@ -67,6 +67,23 @@ class LoginView(generics.GenericAPIView):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
 def get_user_details(request):
-    user = request.user  # Get the currently logged-in user
-    serializer = UserSerializer(user)  # Serialize the user data
-    return Response(serializer.data)  # Return the serialized user data
+    try:
+        user = request.user  # Get the currently logged-in user
+        print("User object:", user)  # Debug print
+        print("User ID:", user.id)   # Debug print
+        print("User PK:", user.pk)   # Debug print
+        
+        serializer = UserSerializer(user)  # Serialize the user data
+        print("Serialized data:", serializer.data)  # Debug print
+        
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "userType": user.userType,
+            "interests": user.interests,
+            "full_name": user.get_full_name() or user.username,
+        })
+    except Exception as e:
+        print("Error in get_user_details:", str(e))  # Debug print
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

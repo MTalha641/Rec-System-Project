@@ -57,18 +57,46 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
+      console.log("Fetching user details with token:", currentToken.substring(0, 10) + "...");
+      
       const response = await axios.get(`${API_URL}/api/users/getuserdetails/`, {
         headers: {
           Authorization: `Bearer ${currentToken}`,
         },
       });
 
-      setUser({
+      console.log("Raw API Response:", response.data);
+
+      if (!response.data) {
+        console.error("No data received from API");
+        return;
+      }
+
+      // Create user object with the data from API
+      const userData = {
+        id: response.data.id,
         username: response.data.username,
         email: response.data.email,
-        avatar: response.data.avatar || 'https://placekitten.com/200/200',
-      });
+        full_name: response.data.full_name || response.data.username,
+        userType: response.data.userType,
+        interests: response.data.interests || [],
+      };
+
+      console.log("Processed User Data:", userData);
+
+      if (!userData.id) {
+        console.error("No user ID found in response:", response.data);
+        return;
+      }
+
+      setUser(userData);
     } catch (error) {
+      console.error("Error in fetchUserDetails:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
       if (error.response?.status === 401) {
         console.warn('Access token expired. Attempting to refresh...');
         await refreshAccessToken();
@@ -117,6 +145,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
+      console.log("Storing tokens and fetching user details...");
       await AsyncStorage.setItem('accessToken', access);
       await AsyncStorage.setItem('refreshToken', refresh);
       setToken(access);

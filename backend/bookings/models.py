@@ -10,6 +10,7 @@ class Booking(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('expired', 'Expired'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)  

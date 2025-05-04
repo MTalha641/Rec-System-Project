@@ -4,7 +4,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Booking
 from items.models import Item
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone
+from payments.models import Payment
 
 class ConfirmBookingView(APIView):
     permission_classes = [IsAuthenticated]
@@ -60,20 +62,54 @@ class ConfirmBookingView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class CheckAndUpdateExpiredBookingsView(APIView):
+    """
+    API endpoint to check and update the status of bookings that are more than 24 hours old
+    and still in pending status to mark them as expired.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Calculate the timestamp for 24 hours ago
+        time_threshold = timezone.now() - timedelta(hours=24)
+        
+        # Find all pending bookings older than 24 hours
+        expired_bookings = Booking.objects.filter(
+            status='pending',
+            created_at__lt=time_threshold
+        )
+        
+        # Update their status to expired
+        count = expired_bookings.count()
+        expired_bookings.update(status='expired')
+        
+        return Response({
+            "message": f"{count} expired bookings have been updated.",
+            "expired_count": count
+        }, status=status.HTTP_200_OK)
+
+
 class RenteeBookingRequestsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # First check and update any expired bookings
+        time_threshold = timezone.now() - timedelta(hours=24)
+        Booking.objects.filter(
+            status='pending',
+            created_at__lt=time_threshold
+        ).update(status='expired')
+
         rentee = request.user
-        bookings = Booking.objects.filter(item__rentee=rentee, status='pending').order_by('-created_at')
+        bookings = Booking.objects.filter(item__rentee=rentee).order_by('-created_at')
 
         data = [{
-             "booking_id": b.id,
+            "booking_id": b.id,
             "item_title": b.item.title,
+            "item_id": b.item.id,
+            "image_url": b.item.image.url if b.item.image else None,
             "renter_name": b.user.username,
-            # "start_date": b.start_date,
-            # "end_date": b.end_date,
-            # "total_price": b.total_price,
+            "created_at": b.created_at,
             "status": b.status
         } for b in bookings]
 
@@ -84,16 +120,23 @@ class RenterBookingListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # First check and update any expired bookings
+        time_threshold = timezone.now() - timedelta(hours=24)
+        Booking.objects.filter(
+            status='pending',
+            created_at__lt=time_threshold
+        ).update(status='expired')
+
         renter = request.user
         bookings = Booking.objects.filter(user=renter).order_by('-created_at')
 
         data = [{
             "booking_id": b.id,
             "item_title": b.item.title,
+            "item_id": b.item.id,
+            "image_url": b.item.image.url if b.item.image else None,
             "rentee_name": b.item.rentee.username,
-            # "start_date": b.start_date,
-            # "end_date": b.end_date,
-            # "total_price": b.total_price,
+            "created_at": b.created_at,
             "status": b.status
         } for b in bookings]
 
@@ -178,3 +221,89 @@ class CancelBookingView(APIView):
         booking.delete()
         
         return Response({"message": "Booking request has been canceled successfully."}, status=status.HTTP_200_OK)
+
+
+class BookingDeliveryDetailsView(APIView):
+    """
+    API endpoint to get consolidated details for a booking delivery.
+    Requires the booking to be approved and paid.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booking_id):
+        try:
+            # Fetch the booking, related item, rentee, renter, and latest payment
+            booking = Booking.objects.select_related(
+                'item',
+                'item__rentee', # Access rentee through the item
+                'user' # Access the user who made the booking (renter)
+            ).get(id=booking_id)
+
+            # Authorization: Ensure the request user is the renter
+            if booking.user != request.user:
+                return Response(
+                    {"message": "You are not authorized to view these delivery details."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Check if the booking is approved
+            if booking.status != 'approved':
+                 return Response(
+                    {"message": "Booking is not approved for delivery yet."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Find the related payment (assuming one payment per booking for simplicity)
+            # Fetch the most recent completed payment for this booking
+            payment = Payment.objects.filter(
+                booking=booking,
+                status='completed'
+            ).order_by('-created_at').first()
+
+            if not payment:
+                return Response(
+                    {"message": "Completed payment for this booking not found."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # --- Origin Location Handling ---
+            # Prioritize latitude/longitude on the Item model if they exist
+            origin_latitude = getattr(booking.item, 'latitude', None)
+            origin_longitude = getattr(booking.item, 'longitude', None)
+            origin_address = getattr(booking.item.rentee, 'address', 'Rentee Location') # Fallback address
+
+            # If lat/lon are not on Item, potentially check User (rentee) model
+            # Add geocoding here if only address is available
+
+            if origin_latitude is None or origin_longitude is None:
+                # Handle missing origin coordinates - maybe return an error or default
+                # For now, let's indicate it's missing but allow proceeding with address
+                print(f"Warning: Origin coordinates missing for item {booking.item.id}")
+                # return Response({"message": "Origin location coordinates missing."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            # Prepare response data
+            data = {
+                "booking_id": booking.id,
+                "item_title": booking.item.title,
+                "rentee_name": booking.item.rentee.username,
+                "origin_address": origin_address, # Use rentee's address or default
+                "origin_location": {
+                    "latitude": origin_latitude,
+                    "longitude": origin_longitude,
+                } if origin_latitude and origin_longitude else None,
+                "destination_address": "Your Location", # Frontend knows this
+                "booking_created_at": booking.created_at,
+                "payment_status": payment.status,
+                "payment_method": payment.payment_method,
+                "payment_created_at": payment.created_at
+                # Add other relevant fields as needed
+            }
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Booking.DoesNotExist:
+            return Response({"message": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"Error fetching booking delivery details: {e}") # Log error
+            return Response({"message": "An error occurred fetching delivery details."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

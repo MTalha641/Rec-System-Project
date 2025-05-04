@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   View,
   Text,
@@ -7,20 +7,37 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import CustomButton from "../components/CustomButton";
 import ReactNativeModal from "react-native-modal";
 import Rlogo from "../assets/images/RLogo.png";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import axios from 'axios';
+import { API_URL } from "@env";
+import AuthContext from "./context/AuthContext";
+
+// Sample locations in Karachi
+const karachiLocations = [
+  { latitude: 24.8607, longitude: 67.0011, name: "Saddar Town" }, // Approx. Saddar
+  { latitude: 24.9263, longitude: 67.0239, name: "Gulshan-e-Iqbal" }, // Approx. Gulshan
+  { latitude: 24.8934, longitude: 67.0626, name: "Defence Housing Authority (DHA)" }, // Approx. DHA
+];
 
 const Riderscreen = () => {
+  const { bookingId } = useLocalSearchParams();
+  const { token } = useContext(AuthContext);
+
   const [userLocation, setUserLocation] = useState(null);
   const [route, setRoute] = useState([]);
   const [success, setSuccess] = useState(false);
-  const [itemReceived, setItemReceived] = useState(false); // New state
+  const [itemReceived, setItemReceived] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const latestIndexRef = useRef(0);
 
@@ -32,10 +49,11 @@ const Riderscreen = () => {
     longitude: animatedLongitude,
   };
 
-  const origin = {
-    latitude: 25.056038,
-    longitude: 67.118942,
-  };
+  // Select a random origin location on component mount
+  const [origin, setOrigin] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * karachiLocations.length);
+    return karachiLocations[randomIndex];
+  });
 
   useEffect(() => {
     (async () => {
@@ -53,8 +71,35 @@ const Riderscreen = () => {
   }, []);
 
   useEffect(() => {
+    const fetchBookingDetails = async () => {
+      if (!bookingId || !token) {
+        setError("Missing booking ID or authentication token.");
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log(`Fetching booking details for ID: ${bookingId}`);
+        const response = await axios.get(`${API_URL}/api/bookings/delivery-details/${bookingId}/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("Booking details fetched:", response.data);
+        setBookingDetails(response.data);
+      } catch (err) {
+        console.error("Error fetching booking details:", err.response?.data || err.message);
+        setError(err.response?.data?.message || "Failed to fetch booking details.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBookingDetails();
+  }, [bookingId, token]);
+
+  useEffect(() => {
     const fetchRoute = async () => {
-      if (!userLocation) return;
+      if (!userLocation || !origin) return; // Check for origin as well
 
       const url = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${userLocation.longitude},${userLocation.latitude}?overview=full&geometries=geojson`;
 
@@ -74,7 +119,7 @@ const Riderscreen = () => {
     };
 
     fetchRoute();
-  }, [userLocation]);
+  }, [userLocation, origin]); // Add origin to dependency array
 
   useEffect(() => {
     if (route.length >= 2) {
@@ -123,18 +168,33 @@ const Riderscreen = () => {
 
   const logo = { uri: "https://cdn-icons-png.flaticon.com/512/854/854866.png" };
 
-  const ride = {
-    origin_address: "Sender Location, Karachi",
-    destination_address: "Your Current Location",
-    created_at: "2024-02-11T10:30:00Z",
-    ride_time: "2024-02-11T12:00:00Z",
-    driver: {
-      first_name: "John",
-      last_name: "Doe",
-      car_seats: "Table Tennis Racquet",
-    },
-    payment_status: "paid",
-  };
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-primary">
+        <ActivityIndicator size="large" color="#FFA001" />
+        <Text className="text-white mt-2">Loading Booking Details...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center bg-primary p-4">
+        <Text className="text-red-500 text-center text-lg">Error</Text>
+        <Text className="text-white text-center mt-2">{error}</Text>
+        <CustomButton title="Go Back" handlePress={() => router.back()} containerStyles="mt-4" />
+      </View>
+    );
+  }
+
+  if (!bookingDetails) {
+    return (
+      <View className="flex-1 justify-center items-center bg-primary p-4">
+        <Text className="text-white text-center">Booking details not found.</Text>
+        <CustomButton title="Go Back" handlePress={() => router.back()} containerStyles="mt-4" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -174,13 +234,13 @@ const Riderscreen = () => {
                   <View className="flex flex-row items-center gap-x-2">
                     <Image source={logo} className="w-5 h-5" />
                     <Text className="text-md font-JakartaMedium text-white" numberOfLines={1}>
-                      {ride.origin_address}
+                      {`Sender Location (${origin.name})`}
                     </Text>
                   </View>
                   <View className="flex flex-row items-center gap-x-2">
                     <Image source={logo} className="w-5 h-5" />
                     <Text className="text-md font-JakartaMedium text-white" numberOfLines={1}>
-                      {ride.destination_address}
+                      {bookingDetails.destination_address || "Your Location"}
                     </Text>
                   </View>
                 </View>
@@ -190,21 +250,21 @@ const Riderscreen = () => {
                 <View className="flex flex-row items-center w-full justify-between mb-5">
                   <Text className="text-md font-JakartaMedium text-white">Date & Time</Text>
                   <Text className="text-md font-JakartaBold text-white" numberOfLines={1}>
-                    {formatDate(ride.created_at)}, {formatTime(ride.ride_time)}
+                    {formatDate(bookingDetails.booking_created_at || new Date())}, {formatTime(bookingDetails.booking_created_at || new Date())}
                   </Text>
                 </View>
 
                 <View className="flex flex-row items-center w-full justify-between mb-5">
-                  <Text className="text-md font-JakartaMedium text-white">Driver</Text>
+                  <Text className="text-md font-JakartaMedium text-white">Rentee</Text>
                   <Text className="text-md font-JakartaBold text-white">
-                    {ride.driver.first_name} {ride.driver.last_name}
+                    {bookingDetails.rentee_name || "Rentee"}
                   </Text>
                 </View>
 
                 <View className="flex flex-row items-center w-full justify-between mb-5">
                   <Text className="text-md font-JakartaMedium text-white">Product</Text>
                   <Text className="text-md font-JakartaBold text-white">
-                    {ride.driver.car_seats}
+                    {bookingDetails.item_title || "Booked Item"}
                   </Text>
                 </View>
 
@@ -212,10 +272,10 @@ const Riderscreen = () => {
                   <Text className="text-md font-JakartaMedium text-white">Payment Status</Text>
                   <Text
                     className={`text-md capitalize font-JakartaBold ${
-                      ride.payment_status === "paid" ? "text-green-500" : "text-red-500"
+                      bookingDetails.payment_status === "completed" || bookingDetails.payment_status === "paid" ? "text-green-500" : "text-red-500"
                     }`}
                   >
-                    {ride.payment_status}
+                    {bookingDetails.payment_status || "Unknown"}
                   </Text>
                 </View>
               </View>
