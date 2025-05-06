@@ -199,6 +199,34 @@ const Bookmark = () => {
     }
   }, [token, getBookingId, refreshBookmarks]);
 
+  // Function to check if a booking is ready for delivery by fetching details
+  const checkBookingReadyForDelivery = useCallback(async (bookingId) => {
+    if (!token || !bookingId) return false;
+    
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Get booking details from backend
+      const response = await axios.get(
+        `${API_URL}/api/bookings/delivery-details/${bookingId}/`,
+        { headers }
+      );
+
+      return true; // If API call succeeds, booking is ready for delivery
+    } catch (error) {
+      // If we get a 400 error with specific message, booking isn't ready
+      if (error.response?.status === 400) {
+        console.log("Booking not ready:", error.response.data.message);
+      } else {
+        console.error("Error checking booking status:", error.message);
+      }
+      return false;
+    }
+  }, [token]);
+
   // Memoized card components using React.memo
   const IncomingRequestCard = memo(({ item }) => {
     const title = item.item_title || "Untitled Item";
@@ -267,6 +295,37 @@ const Bookmark = () => {
     const status = item.status || "pending";
     const imageUrl = item.image_url || 'https://via.placeholder.com/150';
     const bookingId = getBookingId(item);
+    const [isReadyForDelivery, setIsReadyForDelivery] = useState(false);
+    const [isCheckingDelivery, setIsCheckingDelivery] = useState(false);
+    
+    // Format the created date for display
+    const createdDate = useMemo(() => {
+      if (!item.created_at) return "Not specified";
+      const date = new Date(item.created_at);
+      return date.toLocaleDateString();
+    }, [item.created_at]);
+
+    // Check if booking is ready for delivery when approved
+    useEffect(() => {
+      let isMounted = true;
+      
+      const checkDeliveryStatus = async () => {
+        if (status === 'approved' && bookingId) {
+          setIsCheckingDelivery(true);
+          const isReady = await checkBookingReadyForDelivery(bookingId);
+          if (isMounted) {
+            setIsReadyForDelivery(isReady);
+            setIsCheckingDelivery(false);
+          }
+        }
+      };
+      
+      checkDeliveryStatus();
+      
+      return () => {
+        isMounted = false;
+      };
+    }, [status, bookingId, checkBookingReadyForDelivery]);
 
     return (
       <View key={bookingId || `mine-${Math.random()}`} style={styles.cardContainer}>
@@ -290,6 +349,11 @@ const Bookmark = () => {
                 {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
               </Text>
             </View>
+            {status === 'approved' && (
+              <Text style={styles.startDateText}>
+                Requested on: {createdDate}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -304,10 +368,20 @@ const Bookmark = () => {
 
         {status === 'approved' && (
           <TouchableOpacity 
-            style={styles.deliveryButton}
-            onPress={() => router.push('Paymentgateway')}
+            style={[
+              styles.deliveryButton,
+              (isCheckingDelivery || !isReadyForDelivery) && styles.disabledButton
+            ]}
+            disabled={isCheckingDelivery || !isReadyForDelivery}
+            onPress={() => isReadyForDelivery && router.push('Paymentgateway')}
           >
-            <Text style={styles.buttonText}>Initiate Delivery</Text>
+            <Text style={styles.buttonText}>
+              {isCheckingDelivery 
+                ? "Checking..." 
+                : isReadyForDelivery 
+                  ? "Initiate Delivery" 
+                  : "Booking Not Ready Yet"}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -617,10 +691,21 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
+  disabledButton: {
+    backgroundColor: '#1E1E2D',
+    borderWidth: 1,
+    borderColor: '#27ae60',
+  },
   buttonText: {
     color: 'white',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  startDateText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic'
   }
 });
 
