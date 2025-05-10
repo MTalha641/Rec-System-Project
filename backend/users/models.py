@@ -6,6 +6,7 @@ class User(AbstractUser):
     interests = models.JSONField(default=list, blank=True)
     userType = models.TextField(blank=True, null=True)
 
+    
     # Corrected __str__ method
     def __str__(self):
         return self.username

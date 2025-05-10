@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 
+
+
 # Load environment variables from .env file
 load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
@@ -16,7 +18,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Security settings
 SECRET_KEY = 'django-insecure-_)v@v)@hvtey95n)5dig-4_9j_m)b%i1^2hkmf@1b_av&irfmh'
 DEBUG = True
-ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1','10.206.70.1','10.59.224.1']
+ALLOWED_HOSTS = ['192.168.18.6', '192.168.0.124', 'localhost','192.168.174.1','10.206.70.1','10.59.224.1','127.0.0.1']
+
+# Custom user model
+AUTH_USER_MODEL = 'users.User'
 
 # Application definition
 INSTALLED_APPS = [
@@ -37,6 +42,8 @@ INSTALLED_APPS = [
     'notifications',
     'corsheaders',
     'rest_framework_simplejwt',
+    'condition_reports',
+    'disputes',
 ]
 
 # REST Framework settings
@@ -107,7 +114,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     'http://192.168.1.109:8001',
     'http://localhost:8000',
-     'http://10.206.70.1:8000',
+    'http://10.206.70.1:8000',
+    'http://127.0.0.1:8000',
 
 
 
@@ -130,5 +138,3 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Custom user model
-AUTH_USER_MODEL = 'users.User'
