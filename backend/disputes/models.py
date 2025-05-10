@@ -28,7 +28,9 @@ class Dispute(models.Model):
     filed_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='filed_disputes')
     description = models.TextField()
     evidence = models.FileField(upload_to='dispute_evidence/', blank=True, null=True)
-    
+    checkout_report = models.TextField(blank=False, null=False)  # Reference to the checkout condition report
+    return_report = models.TextField(blank=False, null=False)  # Reference to the return condition report
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     outcome = models.CharField(max_length=20, choices=OUTCOME_CHOICES, default='none')
     at_fault = models.CharField(max_length=20, choices=AT_FAULT_CHOICES, default='none')

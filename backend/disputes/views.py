@@ -3,11 +3,14 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied, ValidationError
 from .models import Dispute
 from .serializers import DisputeSerializer, DisputeCreateSerializer, DisputeResolveSerializer
 from items.models import Item
 from users.models import User
 from .ai_service import analyze_dispute
+from bookings.models import Booking
+from condition_reports.models import ItemConditionReport
 
 class DisputeListView(generics.ListAPIView):
     serializer_class = DisputeSerializer
@@ -16,10 +19,10 @@ class DisputeListView(generics.ListAPIView):
         user = self.request.user
         if user.is_staff:
             return Dispute.objects.all()
-        elif user.user_type == 'owner':
+        elif user.userType == 'owner':
             return Dispute.objects.filter(rental__product__owner=user)
         else:
-            return Dispute.objects.filter(rental__renter=user)
+            return Dispute.objects.filter(rental__rentee=user)
 
 class DisputeDetailView(generics.RetrieveAPIView):
     serializer_class = DisputeSerializer
@@ -28,68 +31,63 @@ class DisputeDetailView(generics.RetrieveAPIView):
         user = self.request.user
         if user.is_staff:
             return Dispute.objects.all()
-        elif user.user_type == 'owner':
+        elif user.userType == 'owner':
             return Dispute.objects.filter(rental__product__owner=user)
         else:
-            return Dispute.objects.filter(rental__renter=user)
+            return Dispute.objects.filter(rental__rentee=user)
 
 class CreateDisputeView(generics.CreateAPIView):
     serializer_class = DisputeCreateSerializer
-    
+    permission_classes = [permissions.IsAuthenticated]
+
     def perform_create(self, serializer):
-        rental_id = self.kwargs.get('rental_id')
-        rental = get_object_or_404(Item, id=rental_id)
-        
-        # Check if user is either the owner or renter
+        # Get `rental_id` and `booking_id` from the URL
+        # rental_id = self.kwargs.get('rental_id')
+        booking_id = self.kwargs.get('booking_id')
+        item_id = self.kwargs.get('item_id')
+
+        # Validate the existence of the rental item and booking
+        rental = get_object_or_404(Item, id=item_id)
+        booking = get_object_or_404(Booking, id=booking_id)
+        print(rental.rentee_id, booking.id)
+
+        # Validate the existence of both checkout and return condition reports
+        checkout_report = get_object_or_404(ItemConditionReport, booking=booking.id, report_type='checkout')
+        return_report = get_object_or_404(ItemConditionReport, booking=booking.id, report_type='return')
+
+        print(checkout_report.overall_condition, return_report.overall_condition)
+        # Ensure the user is either the owner or renter
         user = self.request.user
-        if user != rental.product.owner and user != rental.renter:
-            return Response({"error": "You don't have permission to create a dispute for this rental"},
-                          status=status.HTTP_403_FORBIDDEN)
-        
-        # Check if a dispute already exists
-        if Dispute.objects.filter(rental=rental).exists():
-            return Response({"error": "A dispute already exists for this rental"},
-                          status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check if both checkout and return reports exist
-        if not hasattr(rental, 'checkout_report') or not hasattr(rental, 'return_report'):
-            return Response({"error": "Both checkout and return reports must exist to create a dispute"},
-                          status=status.HTTP_400_BAD_REQUEST)
-        
-        # Create dispute
+        # print(user.id, rental.rentee_id)
+        if user.id != rental.rentee_id:
+            raise PermissionDenied("You don't have permission to create a dispute for this rental.")
+
+        # Ensure a dispute doesn't already exist for this booking
+        if Dispute.objects.filter(rental=rental, checkout_report=checkout_report, return_report=return_report).exists():
+            raise ValidationError("A dispute already exists for this booking.")
+
+        # Create the dispute
         dispute = serializer.save(
             rental=rental,
             filed_by=user,
+            checkout_report=checkout_report.overall_condition,
+            return_report=return_report.overall_condition,
             status='pending'
         )
-        
-        # Update rental status
-        rental.status = 'disputed'
-        rental.save()
-        
+
         # Trigger AI analysis
         self.process_dispute_with_ai(dispute)
-        
-        return Response(DisputeSerializer(dispute).data, status=status.HTTP_201_CREATED)
-    
+
     def process_dispute_with_ai(self, dispute):
         # Call AI service to analyze the dispute
-        checkout_report = dispute.rental.checkout_report
-        return_report = dispute.rental.return_report
-        
-        result = analyze_dispute(checkout_report, return_report, dispute.description)
-        
+        result = analyze_dispute(dispute.checkout_report, dispute.return_report, dispute.description)
+
         # Update dispute with AI analysis results
-        dispute.ai_analysis = result['analysis']
-        dispute.outcome = result['outcome']
-        dispute.at_fault = result['at_fault']
-        dispute.status = 'resolved'  # Auto-resolve based on AI analysis
+        dispute.ai_analysis = result.get('analysis', '')
+        dispute.outcome = result.get('outcome', 'none')
+        dispute.at_fault = result.get('at_fault', 'none')
+        dispute.status = 'resolved' if dispute.outcome == 'valid' else 'pending'
         dispute.save()
-        
-        # If renter is at fault, increment fault count
-        if result['at_fault'] == 'renter':
-            renter = dispute.rental.renter
-            renter.increment_fault()
 
 class ResolveDisputeView(generics.UpdateAPIView):
     serializer_class = DisputeResolveSerializer
@@ -98,7 +96,6 @@ class ResolveDisputeView(generics.UpdateAPIView):
     def get_queryset(self):
         return Dispute.objects.all()
     
-# dpisputes/views.py (continued)
     def perform_update(self, serializer):
         dispute = serializer.instance
         serializer.save(status='resolved')
@@ -116,8 +113,7 @@ class UserDisputesView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         
-        if user.user_type == 'owner':
+        if user.userType == 'owner':
             return Dispute.objects.filter(rental__product__owner=user)
         else:
-            return Dispute.objects.filter(rental__renter=user)
-            
+            return Dispute.objects.filter(rental__rentee=user)

@@ -105,8 +105,8 @@ def analyze_dispute(checkout_report, return_report, dispute_description):
     """Analyze dispute between checkout and return reports with contextual, semantic, and sentiment analysis."""
     
     # Prepare texts
-    checkout_text = f"{checkout_report.condition_description} {checkout_report.notes}"
-    return_text = f"{return_report.condition_description} {return_report.notes}"
+    checkout_text = f"{checkout_report}"
+    return_text = f"{return_report}"
     
     # ✨ Compute semantic similarity
     similarity_score = compute_similarity(checkout_text, return_text)
