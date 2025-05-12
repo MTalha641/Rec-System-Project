@@ -11,19 +11,19 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { router } from 'expo-router';
-import { 
-  Bell, 
-  Home as HomeIcon, 
-  Sofa, 
-  Smartphone, 
-  Tent, 
-  PartyPopper, 
-  Baby, 
-  ToolIcon, 
-  Car, 
-  HeartPulse, 
-  GraduationCap, 
-  Briefcase, 
+import {
+  Bell,
+  Home as HomeIcon,
+  Sofa,
+  Smartphone,
+  Tent,
+  PartyPopper,
+  Baby,
+  ToolIcon,
+  Car,
+  HeartPulse,
+  GraduationCap,
+  Briefcase,
   Lamp
 } from 'lucide-react-native';
 
@@ -36,7 +36,6 @@ import ShowCategories from '../../components/ShowCategories';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '@env';
 
-// Categories list with relevant icons
 const categories = [
   { label: "Home and Kitchen Appliances", value: "Home and Kitchen Appliances", icon: HomeIcon },
   { label: "Furniture", value: "Furniture", icon: Sofa },
@@ -115,7 +114,6 @@ const Home = () => {
   }, [token]);
 
   const handleCategorySelect = (category) => {
-    // Navigate to category specific page without filtering on home page
     router.push(`/category/${category.value}`);
   };
 
@@ -149,7 +147,6 @@ const Home = () => {
         ListHeaderComponent={() => (
           <View className="my-6 px-4 space-y-6">
             <View className="flex-row justify-between items-center mb-4">
-              {/* Welcome text and bell grouped together */}
               <View className="flex-row items-center gap-x-4 flex-1">
                 <View>
                   <Text className="font-pmedium text-sm text-gray-100">Welcome!</Text>
@@ -162,7 +159,6 @@ const Home = () => {
                   </Text>
                 </View>
 
-                {/* Notification Icon with Badge */}
                 <TouchableOpacity
                   onPress={() => router.push('/notifications')}
                   className="ml-1 mt-5 relative"
@@ -181,7 +177,6 @@ const Home = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Logo aligned to right */}
               <Image
                 source={logo}
                 className="h-[65px]"
