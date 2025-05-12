@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect, useContext, useCallback, memo, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ const Bookmark = () => {
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastFetchTime, setLastFetchTime] = useState(0);
+  const [reservations, setReservations] = useState([]);
   const router = useRouter();
   const { token } = useContext(AuthContext);
 
@@ -20,6 +21,45 @@ const Bookmark = () => {
   const refreshBookmarks = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
   }, []);
+  
+  // Function to fetch reservations data (similar to MyProductsList.js)
+  const fetchReservations = useCallback(async () => {
+    if (!token) {
+      console.error('No auth token found');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      console.log("Fetching reservations from:", `${API_URL}/api/bookings/reservations/`);
+      const response = await axios.get(
+        `${API_URL}/api/bookings/reservations/`, 
+        { headers }
+      );
+      
+      console.log("API Response:", response.data);
+      
+      if (response.data && Array.isArray(response.data)) {
+        console.log("Setting reservations:", response.data);
+        setReservations(response.data);
+      } else {
+        console.error("API did not return an array:", response.data);
+        setReservations([]);
+      }
+    } catch (error) {
+      console.error("Error fetching reservations:", error.message);
+      console.error("Error response:", error.response?.data);
+      setReservations([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
   
   // Memoize the fetch function to avoid recreating it on every render
   const fetchBookmarks = useCallback(async () => {
@@ -96,7 +136,12 @@ const Bookmark = () => {
   // Fetch data when component mounts or when dependencies change
   useEffect(() => {
     fetchBookmarks();
-  }, [fetchBookmarks, refreshTrigger]);
+    
+    // Fetch reservations when in approved tab
+    if (selectedTab === 'approved') {
+      fetchReservations();
+    }
+  }, [fetchBookmarks, fetchReservations, refreshTrigger, selectedTab]);
 
   // Memoize filtered data to prevent recalculations on every render
   const filteredData = useMemo(() => {
@@ -227,6 +272,43 @@ const Bookmark = () => {
     }
   }, [token]);
 
+  // Function to fetch detailed reservation data for a booking before payment
+  const fetchReservationDetails = useCallback(async (bookingId) => {
+    if (!token || !bookingId) {
+      console.error('Missing token or booking ID for fetching reservation details');
+      return null;
+    }
+
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Call the reservations API to get all reservations
+      const response = await axios.get(
+        `${API_URL}/api/bookings/reservations/`,
+        { headers }
+      );
+      
+      console.log("All reservations retrieved:", response.data);
+      
+      // Find the specific reservation matching our booking ID
+      const bookingDetails = response.data.find(reservation => reservation.id === Number(bookingId));
+      
+      if (bookingDetails) {
+        console.log("Found matching reservation details:", bookingDetails);
+        return bookingDetails;
+      } else {
+        console.error("No matching reservation found for ID:", bookingId);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching reservations:", error.message);
+      return null;
+    }
+  }, [token]);
+
   // Memoized card components using React.memo
   const IncomingRequestCard = memo(({ item }) => {
     const title = item.item_title || "Untitled Item";
@@ -280,7 +362,14 @@ const Bookmark = () => {
         {status === 'approved' && (
           <TouchableOpacity 
             style={styles.deliveryButton}
-            onPress={() => router.push('Paymentgateway')}
+            onPress={() => {
+              console.log("Initiate Delivery button clicked with item:", {
+                id: getBookingId(item),
+                total_price: item.total_price || 1500
+              });
+              // Use URL parameter approach for consistent routing
+              router.push(`/Paymentgateway?bookingId=${getBookingId(item)}&amount=${item.total_price || 1500}`);
+            }}
           >
             <Text style={styles.buttonText}>Initiate Delivery</Text>
           </TouchableOpacity>
@@ -295,8 +384,6 @@ const Bookmark = () => {
     const status = item.status || "pending";
     const imageUrl = item.image_url || 'https://via.placeholder.com/150';
     const bookingId = getBookingId(item);
-    const [isReadyForDelivery, setIsReadyForDelivery] = useState(false);
-    const [isCheckingDelivery, setIsCheckingDelivery] = useState(false);
     
     // Format the created date for display
     const createdDate = useMemo(() => {
@@ -304,28 +391,6 @@ const Bookmark = () => {
       const date = new Date(item.created_at);
       return date.toLocaleDateString();
     }, [item.created_at]);
-
-    // Check if booking is ready for delivery when approved
-    useEffect(() => {
-      let isMounted = true;
-      
-      const checkDeliveryStatus = async () => {
-        if (status === 'approved' && bookingId) {
-          setIsCheckingDelivery(true);
-          const isReady = await checkBookingReadyForDelivery(bookingId);
-          if (isMounted) {
-            setIsReadyForDelivery(isReady);
-            setIsCheckingDelivery(false);
-          }
-        }
-      };
-      
-      checkDeliveryStatus();
-      
-      return () => {
-        isMounted = false;
-      };
-    }, [status, bookingId, checkBookingReadyForDelivery]);
 
     return (
       <View key={bookingId || `mine-${Math.random()}`} style={styles.cardContainer}>
@@ -368,20 +433,17 @@ const Bookmark = () => {
 
         {status === 'approved' && (
           <TouchableOpacity 
-            style={[
-              styles.deliveryButton,
-              (isCheckingDelivery || !isReadyForDelivery) && styles.disabledButton
-            ]}
-            disabled={isCheckingDelivery || !isReadyForDelivery}
-            onPress={() => isReadyForDelivery && router.push('Paymentgateway')}
+            style={styles.deliveryButton}
+            onPress={() => {
+              console.log("Initiate Delivery button clicked with item:", {
+                id: getBookingId(item),
+                total_price: item.total_price || 1500
+              });
+              // Use URL parameter approach for consistent routing
+              router.push(`/Paymentgateway?bookingId=${getBookingId(item)}&amount=${item.total_price || 1500}`);
+            }}
           >
-            <Text style={styles.buttonText}>
-              {isCheckingDelivery 
-                ? "Checking..." 
-                : isReadyForDelivery 
-                  ? "Initiate Delivery" 
-                  : "Booking Not Ready Yet"}
-            </Text>
+            <Text style={styles.buttonText}>Initiate Delivery</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -401,6 +463,64 @@ const Bookmark = () => {
   const handlePushToPayment = useCallback(() => {
     router.push('Paymentgateway');
   }, [router]);
+
+  // Memoized reservation card component (similar to MyProductsList.js)
+  const ReservationCard = memo(({ item }) => {
+    console.log("Rendering Reservation Card with item:", {
+      id: item.id,
+      total_price: item.total_price,
+      item_name: item.item_name,
+      start_date: item.start_date,
+      end_date: item.end_date
+    });
+    
+    return (
+      <View
+        key={item.id || `reservation-${Math.random()}`}
+        style={styles.cardContainer}
+      >
+        <View style={styles.cardHeader}>
+          <Image
+            source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
+            style={styles.cardImage}
+          />
+          <View style={styles.cardDetails}>
+            <Text style={styles.titleText}>
+              {item.item_name}
+            </Text>
+            <Text style={styles.categoryText}>
+              Owner: {item.owner_name}
+            </Text>
+            {item.start_date && item.end_date && (
+              <Text style={styles.dateText}>
+                {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+              </Text>
+            )}
+            {item.total_price && (
+              <Text style={styles.priceText}>
+                Total: PKR {item.total_price}
+              </Text>
+            )}
+          </View>
+        </View>
+        
+        <TouchableOpacity
+          style={styles.deliveryButton}
+          onPress={() => {
+            console.log("Make Payment button clicked with item:", {
+              id: item.id,
+              total_price: item.total_price,
+              item_name: item.item_name
+            });
+            // Here we use the URL string format for passing parameters which works with Expo Router
+            router.push(`/Paymentgateway?bookingId=${item.id}&amount=${item.total_price}`);
+          }}
+        >
+          <Text style={styles.buttonText}>Initiate Delivery</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  });
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -495,37 +615,21 @@ const Bookmark = () => {
           ) : (
             <>
               {/* Approved Items Section */}
-              <Text style={styles.sectionTitle}>Approved Requests</Text>
-              {filteredData.approvedIncoming.length === 0 && filteredData.approvedOutgoing.length === 0 ? (
+              <Text style={styles.sectionTitle}>Approved Items</Text>
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#3498db" />
+                  <Text style={styles.loadingText}>Loading reservations...</Text>
+                </View>
+              ) : reservations.length === 0 ? (
                 <Text style={styles.emptyStateText}>No approved items</Text>
               ) : (
-                <>
-                  {/* Approved items that others requested from me */}
-                  {/* {filteredData.approvedIncoming.length > 0 && (
-                    <>
-                      <Text style={styles.subSectionTitle}>Items I'm Renting Out</Text>
-                      {filteredData.approvedIncoming.map(item => (
-                        <IncomingRequestCard 
-                          key={getBookingId(item) || `incoming-approved-${Math.random()}`} 
-                          item={item}
-                        />
-                      ))}
-                    </>
-                  )} */}
-                  
-                  {/* Approved items that I requested from others */}
-                  {filteredData.approvedOutgoing.length > 0 && (
-                    <>
-                      <Text style={[styles.subSectionTitle, styles.sectionSpacing]}>Items I'm Renting</Text>
-                      {filteredData.approvedOutgoing.map(item => (
-                        <MyRequestCard 
-                          key={getBookingId(item) || `mine-approved-${Math.random()}`} 
-                          item={item}
-                        />
-                      ))}
-                    </>
-                  )}
-                </>
+                reservations.map(item => (
+                  <ReservationCard 
+                    key={item.id || `reservation-${Math.random()}`} 
+                    item={item}
+                  />
+                ))
               )}
             </>
           )}
@@ -706,7 +810,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     fontStyle: 'italic'
-  }
+  },
+  dateText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  priceText: {
+    color: '#3498db',
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 4
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    marginTop: 10
+  },
 });
 
 export default Bookmark;

@@ -250,15 +250,49 @@ def create_payment_intent(request):
     """Create a PaymentIntent for credit card payments"""
     try:
         data = request.data
-        amount = data.get('amount', 1000)  # Amount in smallest currency unit (paisa)
+        # Log the received data for debugging
+        print(f"Payment Intent Request Data: {data}")
+        
+        # Extract required fields with better error handling
+        amount = data.get('amount')
         currency = data.get('currency', 'aed')
         email = data.get('email')
         user_id = data.get('user_id')
         booking_id = data.get('booking_id')
         
-        if not all([amount, email, user_id, booking_id]):
+        # Check for missing or invalid fields
+        missing_fields = []
+        if not amount:
+            missing_fields.append("amount")
+        if not email:
+            missing_fields.append("email")  
+        if not user_id:
+            missing_fields.append("user_id")
+        if not booking_id:
+            missing_fields.append("booking_id")
+        
+        if missing_fields:
+            error_message = f"Missing required fields: {', '.join(missing_fields)}"
+            print(f"Payment Intent Error: {error_message}")
             return Response(
-                {"error": "Missing required fields"}, 
+                {"error": error_message}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Convert to appropriate types if needed
+        try:
+            amount = int(amount)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid amount format"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            booking_id = int(booking_id) 
+        except (ValueError, TypeError):
+            return Response(
+                {"error": f"Invalid booking_id format: {booking_id}"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -296,8 +330,13 @@ def create_payment_intent(request):
                 booking = Booking.objects.get(id=booking_id)
                 payment.booking = booking
                 payment.save()
+                print(f"Payment created successfully: ID {payment.id}, linked to booking {booking_id}")
             except Booking.DoesNotExist:
-                pass
+                print(f"Error: Booking with ID {booking_id} not found")
+                return Response(
+                    {"error": f"Booking with ID {booking_id} not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
                 
         except User.DoesNotExist:
             return Response(
@@ -311,6 +350,7 @@ def create_payment_intent(request):
         })
         
     except Exception as e:
+        print(f"Payment Intent Error: {str(e)}")
         return Response(
             {"error": str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -7,16 +7,20 @@ from .views import (
     UserReservationsView, 
     CancelBookingView, 
     CheckAndUpdateExpiredBookingsView,
-    BookingDeliveryDetailsView
+    BookingDeliveryDetailsView,
+    PendingDeliveriesView,
+    UpdateDeliveryStatusView
 )
 
 urlpatterns = [
-    path('confirm/', ConfirmBookingView.as_view(), name='confirm-booking'),
-    path('incomingrequests/', RenteeBookingRequestsView.as_view(), name='owner-booking-requests'),
-    path('myrequests/', RenterBookingListView.as_view(), name='renter-bookings'),
-    path('update-status/<int:booking_id>/', UpdateBookingStatusView.as_view(), name='update-booking-status'),
-    path('reservations/', UserReservationsView.as_view(), name='user-reservations'),
-    path('cancel/<int:booking_id>/', CancelBookingView.as_view(), name='cancel-booking'),
-    path('check-expired/', CheckAndUpdateExpiredBookingsView.as_view(), name='check-expired-bookings'),
-    path('delivery-details/<int:booking_id>/', BookingDeliveryDetailsView.as_view(), name='booking-delivery-details'),
+    path('confirm/', ConfirmBookingView.as_view(), name='confirm_booking'),
+    path('incomingrequests/', RenteeBookingRequestsView.as_view(), name='incoming_booking_requests'),
+    path('myrequests/', RenterBookingListView.as_view(), name='my_booking_requests'),
+    path('update-status/<int:booking_id>/', UpdateBookingStatusView.as_view(), name='update_booking_status'),
+    path('reservations/', UserReservationsView.as_view(), name='user_reservations'),
+    path('cancel/<int:booking_id>/', CancelBookingView.as_view(), name='cancel_booking'),
+    path('check-expired/', CheckAndUpdateExpiredBookingsView.as_view(), name='check_expired_bookings'),
+    path('delivery-details/<int:booking_id>/', BookingDeliveryDetailsView.as_view(), name='delivery_details'),
+    path('pending-deliveries/', PendingDeliveriesView.as_view(), name='pending_deliveries'),
+    path('update-delivery-status/<int:booking_id>/', UpdateDeliveryStatusView.as_view(), name='update_delivery_status'),
 ]

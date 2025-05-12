@@ -17,21 +17,39 @@ const SignIn = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useContext(AuthContext); // Access the login function from AuthContext
+  const { login, user } = useContext(AuthContext); // Get user info too
 
   // useEffect to check if user is already logged in
   useEffect(() => {
     const checkIfLoggedIn = async () => {
       const token = await AsyncStorage.getItem("accessToken");
       if (token) {
-        // Redirect to home page if token exists
-        Alert.alert("You are already logged in!");
-        router.push("/home"); // Navigate to home page
+        // Get userType from storage to determine redirect
+        const userTypeFromStorage = await AsyncStorage.getItem("userType");
+        if (userTypeFromStorage === "Vendor") {
+          router.push("/vendorhome");
+        } else {
+          router.push("/home");
+        }
       }
     };
 
     checkIfLoggedIn(); // Run this on component mount
   }, []);
+
+  // Redirect based on user type when user state updates
+  useEffect(() => {
+    if (user) {
+      // Redirect based on user type
+      if (user.userType === "Vendor") {
+        console.log("Redirecting to vendor home page");
+        router.push("/vendorhome");
+      } else {
+        console.log("Redirecting to regular home page");
+        router.push("/home");
+      }
+    }
+  }, [user]);
 
   const submit = async () => {
     console.log("Submitting login request");
@@ -46,14 +64,18 @@ const SignIn = () => {
       console.log("Response received:", response.data);
 
       if (response.status === 200) {
+        // Store userType if available in the response
+        if (response.data.user_type) {
+          await AsyncStorage.setItem("userType", response.data.user_type);
+        }
+        
         // Use login function from AuthContext and pass the full response data
         await login(response.data); // Pass entire response.data which contains access and refresh tokens
 
         // Show success alert
         Alert.alert("Success", "Login successful!");
-
-        // Navigate to home page
-        router.push("/home");
+        
+        // Redirection will happen in the useEffect that watches the user state
       } else {
         Alert.alert("Error", "Invalid credentials. Please try again.");
       }

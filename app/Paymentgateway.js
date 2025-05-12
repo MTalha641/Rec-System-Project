@@ -1,7 +1,6 @@
 import { router } from "expo-router";
-import React, { useState, useEffect, useContext } from "react";
-import { Alert, Image, Text, TextInput, View, TouchableOpacity, ActivityIndicator } from "react-native";
-import { ReactNativeModal } from "react-native-modal";
+import React, { useState, useEffect, useContext, useRef } from "react";
+import { Alert, Image, Text, TextInput, View, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
 import { useConfirmPayment, CardField, CardFieldInput } from '@stripe/stripe-react-native';
 import CustomButton from "../components/CustomButton";
 import logo from "../assets/images/RLogo.png";
@@ -9,6 +8,7 @@ import pathImage from "../assets/images/path.png";
 import { API_URL, STRIPE_PUBLISHABLE_KEY } from "@env";
 import axios from 'axios';
 import AuthContext from "./context/AuthContext";
+import { useLocalSearchParams } from 'expo-router';
 
 const STRIPE_KEY = STRIPE_PUBLISHABLE_KEY;
 
@@ -25,6 +25,12 @@ const StripePaymentGateway = () => {
   const [paymentId, setPaymentId] = useState(null);
   const [bookingId, setBookingId] = useState(null);
   const { confirmPayment } = useConfirmPayment();
+  
+  // Get URL parameters using useLocalSearchParams
+  const params = useLocalSearchParams();
+  
+  // Use a ref to track if parameters have been extracted
+  const paramsExtracted = useRef(false);
 
   // Verify Stripe initialization
   useEffect(() => {
@@ -40,6 +46,52 @@ const StripePaymentGateway = () => {
     console.log("confirmPayment function from useConfirmPayment:", confirmPayment ? "Available" : "Not Available");
     console.log("Stripe React Native Integration Status:", confirmPayment ? "Working" : "Not Working");
   }, []);
+
+  // Retrieve bookingId and amount from URL parameters - only once
+  useEffect(() => {
+    // Skip if parameters have already been extracted
+    if (paramsExtracted.current) return;
+    
+    console.log("Payment Gateway received local search params:", params);
+    
+    // Extract parameters directly from useLocalSearchParams hook
+    const urlBookingId = params.bookingId;
+    const urlAmount = params.amount;
+    
+    console.log("Extracted URL parameters:", { urlBookingId, urlAmount });
+    
+    // Check if we have both required parameters
+    if (!urlBookingId || !urlAmount) {
+      console.error("Missing required parameters:", { urlBookingId, urlAmount });
+      Alert.alert(
+        "Missing Parameters",
+        "Required booking information is missing. Please go back and try again.",
+        [{ text: "Go Back", onPress: () => router.back() }]
+      );
+      return;
+    }
+    
+    // Set booking ID from URL parameters
+    console.log("Setting bookingId from URL:", urlBookingId);
+    setBookingId(urlBookingId);
+    
+    // Set payment amount from URL parameters
+    const parsedAmount = parseFloat(urlAmount);
+    console.log("Setting amount from URL:", parsedAmount);
+    setPaymentAmount(parsedAmount);
+    
+    // Pre-fill email from user context if available
+    if (user?.email) {
+      setEmail(user.email);
+    }
+    
+    if (user?.full_name) {
+      setFullName(user.full_name);
+    }
+    
+    // Mark parameters as extracted to prevent repeated calls
+    paramsExtracted.current = true;
+  }, [params, user, router]);
 
   // Debug function to test Stripe integration
   const testStripeIntegration = async () => {
@@ -169,116 +221,54 @@ const StripePaymentGateway = () => {
     }
   };
 
-  useEffect(() => {
-    // Debug router params and user context
-    console.log("Paymentgateway - Router Params:", JSON.stringify(router.params, null, 2));
-    console.log("Paymentgateway - Router Query:", JSON.stringify(router.query, null, 2));
-    console.log("Paymentgateway - Full Router Object:", {
-      pathname: router.pathname,
-      params: router.params,
-      query: router.query,
-      asPath: router.asPath
-    });
-    console.log("Paymentgateway - Full User Context:", user);
-    console.log("Paymentgateway - Token:", token);
-    
-    // Get booking details from router params/query
-    // First try standard router params and query
-    let paramsBookingId = router.query?.bookingId || router.params?.bookingId;
-    let amount = router.query?.amount || router.params?.amount;
-    
-    // If that fails, try to get directly from URL search params if we have asPath
-    if ((!paramsBookingId || !amount) && router.asPath) {
-      try {
-        // Extract query parameters from asPath
-        const urlSearchParams = new URLSearchParams(router.asPath.split('?')[1] || '');
-        if (!paramsBookingId) {
-          paramsBookingId = urlSearchParams.get('bookingId');
-          console.log("Extracted bookingId from URL search params:", paramsBookingId);
-        }
-        if (!amount) {
-          amount = urlSearchParams.get('amount');
-          console.log("Extracted amount from URL search params:", amount);
-        }
-      } catch (error) {
-        console.error("Error parsing URL params:", error);
-      }
-    }
-    
-    // DEVELOPMENT ONLY: Hardcoded fallback values for debugging
-    if (__DEV__ && (!paramsBookingId || !amount)) {
-      console.warn("Using hardcoded values for debugging");
-      paramsBookingId = paramsBookingId || router.params?.id || 32;
-      amount = amount || 300;
-    }
-    
-    console.log("Paymentgateway - Extracted Parameters:", {
-      bookingId: paramsBookingId,
-      amount: amount,
-      source: {
-        queryBookingId: router.query?.bookingId,
-        paramsBookingId: router.params?.bookingId,
-        queryAmount: router.query?.amount,
-        paramsAmount: router.params?.amount
-      }
-    });
-    
-    if (!paramsBookingId) {
-      console.error("Paymentgateway - No booking ID found in params/query");
-      Alert.alert("Error", "Booking ID is missing. Please go back and try again.");
-      router.back();
-      return;
-    }
-    
-    if (!amount) {
-      console.error("Paymentgateway - No amount found in params/query");
-      Alert.alert("Error", "Payment amount is missing. Please go back and try again.");
-      router.back();
-      return;
-    }
-    
-    console.log("Paymentgateway - Setting state with:", {
-      bookingId: paramsBookingId,
-      amount: parseFloat(amount)
-    });
-    
-    setBookingId(paramsBookingId);
-    setPaymentAmount(parseFloat(amount));
-    
-    // Check if user ID is present, which is still needed for API calls
-    if (!user?.id) {
-        console.warn("Paymentgateway - No user ID in context, needed for API calls.");
-        Alert.alert("Login Required", "Please log in to make a payment.");
-        router.replace('/sign-in');
-    }
-  }, [router.params, router.query, router.asPath, user]);
-
-  // Correct the email validation regex
-  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
+  // Validate fields before payment
   const validateFields = (isCardPayment = false) => {
-    console.log("Validating fields...");
-    console.log("Full User Context:", user);
-    console.log("Full Name:", fullName);
-    console.log("Email:", email);
-    console.log("Payment Method:", paymentMethod);
-    console.log("Booking ID:", bookingId);
-    console.log("User ID:", user?.id);
-    console.log("Payment Amount:", paymentAmount);
+    console.log("Validating fields with bookingId:", bookingId);
+    console.log("Current payment amount:", paymentAmount);
     
     if (!bookingId) {
-      Alert.alert("Error", "Booking ID is missing. Please go back and try again.");
-      return false;
-    }
-    
-    if (!user?.id) {
-      Alert.alert("Error", "Please log in to continue.");
-      router.replace('/sign-in');
+      console.error("Missing booking ID in validateFields");
+      Alert.alert(
+        "Missing Booking ID",
+        "There was an issue with the booking information. Would you like to retry with a test booking ID?",
+        [
+          {
+            text: "Yes, use test ID",
+            onPress: () => {
+              setBookingId("1");
+              Alert.alert("Test ID Set", "Now you can try confirming payment again.");
+            }
+          },
+          {
+            text: "No, go back",
+            onPress: () => router.back(),
+            style: "cancel"
+          }
+        ]
+      );
       return false;
     }
     
     if (!paymentAmount || isNaN(paymentAmount)) {
-      Alert.alert("Error", "Payment amount is invalid. Please go back and try again.");
+      console.error("Invalid payment amount:", paymentAmount);
+      Alert.alert(
+        "Invalid Amount",
+        "Payment amount is invalid or missing. Would you like to use a default test amount?",
+        [
+          {
+            text: "Yes, use default",
+            onPress: () => {
+              setPaymentAmount(1500);
+              Alert.alert("Default Amount Set", "Now you can try confirming payment again.");
+            }
+          },
+          {
+            text: "No, go back",
+            onPress: () => router.back(),
+            style: "cancel"
+          }
+        ]
+      );
       return false;
     }
     
@@ -288,25 +278,36 @@ const StripePaymentGateway = () => {
         return false;
       }
     }
+    
     if (paymentMethod === "Cash on Delivery" && (!address || !phoneNumber)) {
       Alert.alert("Incomplete Details", "Please fill in address and phone number before proceeding.");
       return false;
     }
+    
     return true;
   };
+  
+  // Email validation function
+  const validateEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
+  // Update payment status in backend
   const updatePaymentStatus = async (paymentId) => {
     if (!paymentId || !token) return;
+    
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
+      
       const response = await axios.post(
         `${API_URL}/api/payments/update-payment-status/`,
         { payment_id: paymentId, status: 'completed' },
         { headers }
       );
+      
       console.log("Payment status updated:", response.data);
     } catch (error) {
       console.error("Failed to update payment status:", error);
@@ -325,8 +326,8 @@ const StripePaymentGateway = () => {
         'Content-Type': 'application/json'
       };
       const amount = Math.round(paymentAmount * 100);
-      const localBookingId = bookingId || router.params?.bookingId || 1;
-      const userId = user?.id || router.params?.userId || 1;
+      const localBookingId = bookingId || params.bookingId || 1;
+      const userId = user?.id || params.userId || 1;
       
       console.log("Stripe Payment Request Payload:", { 
         amount, 
@@ -340,7 +341,13 @@ const StripePaymentGateway = () => {
       
       const response = await axios.post(
         `${API_URL}/api/payments/create-payment-intent/`,
-        { amount, currency: 'aed', email, user_id: userId, booking_id: localBookingId },
+        { 
+          amount, 
+          currency: 'aed', 
+          email, 
+          user_id: userId, 
+          booking_id: localBookingId
+        },
         { headers }
       );
       
@@ -377,141 +384,98 @@ const StripePaymentGateway = () => {
   };
 
   const handleCashOnDelivery = async () => {
-    console.log("Handling Cash on Delivery...");
-    if (!validateFields()) return;
+    if (!validateFields(false)) return;
     
     try {
       setLoading(true);
+      
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
       
-      console.log("Making API request with:");
-      console.log("Booking ID:", bookingId);
-      console.log("User ID:", user?.id);
-      console.log("Amount:", paymentAmount);
-      console.log("Address:", address);
-      console.log("Phone:", phoneNumber);
+      console.log("Creating cash payment for booking:", bookingId);
       
       const response = await axios.post(
         `${API_URL}/api/payments/create-cash-payment/`,
         { 
-          user_id: user?.id, 
+          user_id: user?.id,
           booking_id: bookingId, 
-          amount: paymentAmount, 
-          address, 
-          phone_number: phoneNumber 
+          amount: paymentAmount,
+          email: email || user?.email,
+          full_name: fullName,
+          address: address,
+          phone_number: phoneNumber,
+          payment_method: "cash_on_delivery"
         },
         { headers }
       );
       
-      console.log("API Response:", response.data);
-      
-      setLoading(false);
-      if (response.data.success) {
-        if (response.data.payment?.id) {
-          setPaymentId(response.data.payment.id);
-        }
+      if (response.data && response.data.id) {
+        setPaymentId(response.data.id);
+        await updatePaymentStatus(response.data.id);
         setSuccess(true);
       } else {
-        Alert.alert("Payment Setup Failed", "Unable to setup cash on delivery. Please try again later.");
+        Alert.alert("Error", "Failed to create payment record.");
       }
     } catch (error) {
+      console.error("Error creating COD payment:", error.message);
+      Alert.alert("Error", "Failed to process cash on delivery payment.");
+    } finally {
       setLoading(false);
-      console.error("Error in handleCashOnDelivery:", error);
-      console.error("Error response:", error.response?.data);
-      Alert.alert("Payment Setup Failed", error.response?.data?.error || "Unable to setup cash on delivery. Please try again later.");
     }
   };
 
   const handleStripePayment = async () => {
-    console.log("Handling Stripe Payment...");
     if (!validateFields(true)) return;
     
     try {
       setLoading(true);
-      console.log("=== STRIPE PAYMENT PROCESSING ===");
-      const { clientSecret, id } = await fetchPaymentIntentClientSecret();
+      const paymentIntentData = await fetchPaymentIntentClientSecret();
       
-      if (!clientSecret) {
-        console.error("No client secret received from Stripe");
+      if (!paymentIntentData || !paymentIntentData.clientSecret) {
         setLoading(false);
+        Alert.alert("Error", "Failed to initialize payment. Please try again.");
         return;
       }
       
-      // Extract payment intent ID from client secret for debugging
-      try {
-        // Client secret format is: pi_xxxxx_secret_yyyy
-        // We want to extract pi_xxxxx part
-        const paymentIntentId = clientSecret.split('_secret_')[0];
-        console.log("🔍 Extracted Stripe Payment Intent ID:", paymentIntentId);
-        console.log("📝 NOTE: Search for this ID in Stripe dashboard:", paymentIntentId);
-        console.log("📊 Stripe Dashboard URL: https://dashboard.stripe.com/test/payments");
-      } catch (e) {
-        console.log("Could not extract payment intent ID from client secret");
-      }
-      
-      console.log("Starting Stripe confirmPayment with client secret");
-      console.log("Payment Method Type: Card");
-      console.log("Billing Details:", { 
-        name: fullName, 
-        email,
-        address: address || "Not provided"
-      });
-      
-      const { error, paymentIntent } = await confirmPayment(clientSecret, {
+      const { error, paymentIntent } = await confirmPayment(paymentIntentData.clientSecret, {
         paymentMethodType: 'Card',
         paymentMethodData: {
           billingDetails: { 
+            email: email,
             name: fullName, 
-            email,
+            phone: phoneNumber,
             address: {
-              line1: address
+              line1: address,
             }
-          },
-        },
+          }
+        }
       });
       
-      setLoading(false);
       if (error) {
-        console.error("❌ Stripe Payment Error:", error);
-        console.error("❌ Error Code:", error.code);
-        console.error("❌ Error Message:", error.message);
-        console.error("❌ Error Type:", error.type);
-        console.error("❌ Error Decline Code:", error.declineCode);
-        Alert.alert('Payment Confirmation Error', error.message);
-        return;
+        console.error("Payment confirmation error:", error.message);
+        Alert.alert("Payment Failed", error.message);
       } else if (paymentIntent) {
-        console.log("✅ Stripe Payment Success!");
-        console.log("✅ Payment Intent ID:", paymentIntent.id);
-        console.log("✅ Payment Intent Status:", paymentIntent.status);
-        console.log("✅ Full Payment Intent:", JSON.stringify(paymentIntent, null, 2));
-        console.log("📊 Look for this Payment Intent ID in Stripe Dashboard:", paymentIntent.id);
-        console.log("❗ If not visible in Stripe logs, check for:");
-        console.log("  1. Test vs Live mode in Stripe Dashboard");
-        console.log("  2. API key mismatch between frontend and backend");
-        console.log("  3. Currency mismatch ('aed' vs other currencies)");
-        console.log("  4. Sandbox/Test environment issues");
+        console.log("Payment successful");
         
-        if (id) {
-          console.log("Updating payment status for ID:", id);
-          updatePaymentStatus(id);
+        // Update payment status
+        const currentPaymentId = paymentId || paymentIntentData.id;
+        if (currentPaymentId) {
+          await updatePaymentStatus(currentPaymentId);
         }
+        
         setSuccess(true);
       }
     } catch (error) {
+      console.error("Error processing payment:", error.message);
+      Alert.alert("Payment Error", error.message || "Failed to process payment");
+    } finally {
       setLoading(false);
-      console.error('❌ Stripe Payment Error:', error);
-      console.error("❌ Error Stack:", error.stack);
-      Alert.alert('Payment Error', 'An unexpected error occurred during payment processing.');
     }
   };
 
   const handleConfirm = () => {
-    console.log("Confirm button clicked");
-    console.log("Selected payment method:", paymentMethod);
-    
     if (paymentMethod === "Credit Card") {
       handleStripePayment();
     } else {
@@ -619,27 +583,39 @@ const StripePaymentGateway = () => {
       )}
 
       <CustomButton 
-        title={loading ? "Processing..." : "Confirm Transaction"} 
+        title={loading ? "Processing..." : "Confirm Payment"} 
         containerStyles="mt-7 w-full" 
         handlePress={handleConfirm} 
         disabled={loading} 
       />
 
-      <ReactNativeModal isVisible={success} onBackdropPress={() => setSuccess(false)}>
-        <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
-          <Image source={logo} className="w-28 h-28 mt-5" />
-          <Text className="text-2xl text-center font-bold mt-5 text-black">Booking Request placed successfully.</Text>
-          <Text className="text-md text-gray-500 text-center mt-3">Thank you for your booking Product. Your Rider will deliver your requested item soon. Please proceed.</Text>
-          <CustomButton 
-            title="Track Rider" 
-            containerStyles="mt-5 w-full" 
-            handlePress={() => { 
-              setSuccess(false); 
-              router.push({ pathname: "/Riderscreen", params: { bookingId: bookingId } }); 
-            }} 
-          />
+      <Modal
+        transparent={true}
+        visible={success}
+        animationType="slide"
+        onRequestClose={() => setSuccess(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View className="bg-white p-7 rounded-2xl w-[90%] max-w-[400px]">
+            <Image source={logo} className="w-28 h-28 mt-5 self-center" />
+            <Text className="text-2xl text-center font-bold mt-5 text-black">Payment Successful!</Text>
+            <Text className="text-md text-gray-500 text-center mt-3">Your payment has been processed. We're now waiting for a driver to accept your delivery request.</Text>
+            <CustomButton 
+              title="Track Delivery Status" 
+              containerStyles="mt-5 w-full" 
+              handlePress={() => { 
+                setSuccess(false);
+                router.push(`/Riderscreen?bookingId=${bookingId}`);
+              }} 
+            />
+          </View>
         </View>
-      </ReactNativeModal>
+      </Modal>
     </View>
   );
 };

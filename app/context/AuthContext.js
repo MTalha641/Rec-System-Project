@@ -78,17 +78,21 @@ export const AuthProvider = ({ children }) => {
         username: response.data.username,
         email: response.data.email,
         full_name: response.data.full_name || response.data.username,
-        userType: response.data.userType,
+        userType: response.data.userType || response.data.user_type || "Normal User",
         interests: response.data.interests || [],
       };
 
       console.log("Processed User Data:", userData);
+      console.log("User Type:", userData.userType); // Add this for debugging
 
       if (!userData.id) {
         console.error("No user ID found in response:", response.data);
         return;
       }
 
+      // Store user type in AsyncStorage for easy retrieval
+      await AsyncStorage.setItem("userType", userData.userType || "Normal User");
+      
       setUser(userData);
     } catch (error) {
       console.error("Error in fetchUserDetails:", {

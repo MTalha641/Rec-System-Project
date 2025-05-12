@@ -53,6 +53,8 @@ class LoginView(generics.GenericAPIView):
                     "username": user.username,
                     "refresh": str(refresh),
                     "access": str(refresh.access_token),
+                    "user_type": user.userType,  # Include user type in the response
+                    "email": user.email
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({

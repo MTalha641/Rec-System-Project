@@ -162,22 +162,15 @@ const MyProductsList = () => {
           <TouchableOpacity
             className="mt-2 bg-green-500 p-2 rounded-lg"
             onPress={() => {
-              console.log("Make Payment button clicked with item:", {
-                id: item.id,
-                total_price: item.total_price,
-                item_name: item.item_name
-              });
-              router.push({
-                pathname: '/Paymentgateway',
-                query: {
-                  bookingId: item.id,
-                  amount: item.total_price
-                }
-              });
+              router.push('/(tabs)/bookmark');
+              Alert.alert(
+                "Payment & Delivery",
+                "To make a payment and initiate delivery, please go to the Approved tab in Bookmarks and click on 'Initiate Delivery' for this item."
+              );
             }}
           >
             <Text className="text-white text-center">
-              Make Payment
+              View in Bookmarks
             </Text>
           </TouchableOpacity>
         )}
