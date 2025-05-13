@@ -26,6 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 const RiderscreenVendor = () => {
   const params = useLocalSearchParams();
   const bookingId = params.bookingId;
+  const isReturnRide = params.isReturn === 'true';
   const { token } = useContext(AuthContext);
   
   const [success, setSuccess] = useState(false);
@@ -56,9 +57,10 @@ const RiderscreenVendor = () => {
   useEffect(() => {
     if (!paramsLogged.current && bookingId) {
       console.log("RiderscreenVendor received bookingId:", bookingId);
+      console.log("Is this a return ride?", isReturnRide ? "Yes" : "No");
       paramsLogged.current = true;
     }
-  }, [bookingId]);
+  }, [bookingId, isReturnRide]);
 
   // Request location permissions and get user location
   useEffect(() => {
@@ -522,16 +524,28 @@ const RiderscreenVendor = () => {
             disabled={!itemReceived}
             containerStyles={`mt-2 w-full ${itemReceived ? "bg-orange-500" : "bg-orange-300"}`}
             handlePress={() => {
-              if (itemReceived && bookingDetails?.booking_id) {
-                router.push({
-                  pathname: "/InspectionReport",
-                  params: { bookingId: bookingDetails.booking_id }
-                });
-              } else if (itemReceived && bookingId) {
-                router.push({
-                  pathname: "/InspectionReport",
-                  params: { bookingId: bookingId }
-                });
+              // Check if this is a return ride or an initial delivery
+              // Use either the URL param or the booking details
+              const isReturn = isReturnRide || bookingDetails?.return_status === 'in_return';
+              
+              if (itemReceived) {
+                if (isReturn) {
+                  // For return rides, navigate to SecondInspectionReport
+                  console.log("Navigating to SecondInspectionReport for return ride");
+                  const bookingIdToUse = bookingDetails?.booking_id || bookingId;
+                  router.push({
+                    pathname: "/SecondInspectionReport",
+                    params: { bookingId: bookingIdToUse }
+                  });
+                } else {
+                  // For initial delivery rides, navigate to InspectionReport
+                  console.log("Navigating to InspectionReport for initial delivery");
+                  const bookingIdToUse = bookingDetails?.booking_id || bookingId;
+                  router.push({
+                    pathname: "/InspectionReport",
+                    params: { bookingId: bookingIdToUse }
+                  });
+                }
               } else {
                 Alert.alert("Error", "Cannot proceed without booking information");
               }

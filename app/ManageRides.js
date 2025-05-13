@@ -107,7 +107,7 @@ const ManageRides = () => {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      router.push(`/RiderscreenVendor?bookingId=${bookingId}`);
+      router.push(`/RiderscreenVendor?bookingId=${bookingId}&isReturn=false`);
     } catch (error) {
       console.error("Error approving delivery:", error);
       Alert.alert(
@@ -131,7 +131,7 @@ const ManageRides = () => {
       );
       fetchReturnRides();
       Alert.alert("Success", "Return request accepted. Return delivery in progress.");
-      router.push(`/RiderscreenVendor?bookingId=${bookingId}`);
+      router.push(`/RiderscreenVendor?bookingId=${bookingId}&isReturn=true`);
     } catch (error) {
       console.error("Error accepting return:", error);
       Alert.alert("Error", "Failed to accept return request.");
