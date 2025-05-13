@@ -19,6 +19,14 @@ class Booking(models.Model):
         ('delivered', 'Delivered'),
     ]
 
+    RETURN_STATUS_CHOICES = [
+        ('not_started', 'Not Started'),
+        ('pending', 'Pending'),
+        ('in_return', 'In Return'),
+        ('returned', 'Returned'),
+        ('completed', 'Completed'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)  
     item = models.ForeignKey(Item, on_delete=models.CASCADE)  
     start_date = models.DateField()  
@@ -35,6 +43,13 @@ class Booking(models.Model):
         max_length=20,
         choices=DELIVERY_STATUS_CHOICES,
         default='pending',
+        null=True,
+        blank=True
+    )
+    return_status = models.CharField(
+        max_length=20,
+        choices=RETURN_STATUS_CHOICES,
+        default='not_started',
         null=True,
         blank=True
     )

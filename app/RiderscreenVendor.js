@@ -522,8 +522,18 @@ const RiderscreenVendor = () => {
             disabled={!itemReceived}
             containerStyles={`mt-2 w-full ${itemReceived ? "bg-orange-500" : "bg-orange-300"}`}
             handlePress={() => {
-              if (itemReceived) {
-                router.push("/vendorhome");
+              if (itemReceived && bookingDetails?.booking_id) {
+                router.push({
+                  pathname: "/InspectionReport",
+                  params: { bookingId: bookingDetails.booking_id }
+                });
+              } else if (itemReceived && bookingId) {
+                router.push({
+                  pathname: "/InspectionReport",
+                  params: { bookingId: bookingId }
+                });
+              } else {
+                Alert.alert("Error", "Cannot proceed without booking information");
               }
             }}
           />
@@ -556,17 +566,17 @@ const RiderscreenVendor = () => {
               containerStyles="mt-5 w-full bg-orange-500"
               handlePress={async () => {
                 try {
-                  // Mark the delivery as completed in the API
-                  await axios.patch(
-                    `${API_URL}/api/bookings/update-delivery-status/${bookingId}/`,
-                    { status: "delivered" },
-                    {
-                      headers: { 
-                        // Authorization: `Bearer ${token}`,  // Comment out token to fix 401 error
-                        'Content-Type': 'application/json' 
-                      }
-                    }
-                  );
+                  // Comment out API call as requested
+                  // await axios.patch(
+                  //   `${API_URL}/api/bookings/update-delivery-status/${bookingId}/`,
+                  //   { status: "delivered" },
+                  //   {
+                  //     headers: { 
+                  //       // Authorization: `Bearer ${token}`,  // Comment out token to fix 401 error
+                  //       'Content-Type': 'application/json' 
+                  //     }
+                  //   }
+                  // );
                   
                   setSuccess(false);
                   setItemReceived(true);

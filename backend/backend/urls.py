@@ -28,5 +28,5 @@ urlpatterns = [
     path('api/reviews/',include('reviews.urls')),
     path('api/payments/', include('payments.urls')),
     path('api/notifications/', include('notifications.urls')),
-
+    path('api/condition_reports/', include('condition_reports.urls')),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

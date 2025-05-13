@@ -1,7 +1,17 @@
 import React from "react";
 import { View, FlatList } from "react-native";
 import CategoryButton from "./CategoryButton";
-import { ToolIcon, Settings, Radio, Shirt, Boot, UtensilsCrossed, Sofa, Monitor, MoreHorizontal } from "lucide-react-native";
+import {
+  ToolIcon,
+  Settings,
+  Radio,
+  Shirt,
+  Boot,
+  UtensilsCrossed,
+  Sofa,
+  Monitor,
+  MoreHorizontal,
+} from "lucide-react-native";
 
 const ShowCategories = ({ categories = [], onSelectCategory }) => {
   const defaultCategories = [
@@ -16,14 +26,14 @@ const ShowCategories = ({ categories = [], onSelectCategory }) => {
     { name: "Others", icon: MoreHorizontal },
   ];
 
-  // If categories prop is provided and not empty, use them
-  const displayCategories = categories.length > 0 
-    ? categories.map(cat => ({
-        name: cat.label,
-        value: cat.value,
-        icon: cat.icon,
-      }))
-    : defaultCategories;
+  const displayCategories =
+    categories.length > 0
+      ? categories.map((cat) => ({
+          name: cat.label,
+          value: cat.value,
+          icon: cat.icon,
+        }))
+      : defaultCategories;
 
   return (
     <View className="mt-4">
@@ -32,12 +42,21 @@ const ShowCategories = ({ categories = [], onSelectCategory }) => {
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.name || item.value}
+        contentContainerStyle={{
+          gap: 8, // tighter spacing between items
+        }}
         renderItem={({ item }) => (
-          <CategoryButton 
+          <CategoryButton
             IconComponent={item.icon}
-            IconName={item.name} 
-            categoryValue={item.value} 
-            onPress={() => onSelectCategory && onSelectCategory({ label: item.name, value: item.value || item.name })}
+            IconName={item.name}
+            categoryValue={item.value}
+            onPress={() =>
+              onSelectCategory &&
+              onSelectCategory({
+                label: item.name,
+                value: item.value || item.name,
+              })
+            }
           />
         )}
       />

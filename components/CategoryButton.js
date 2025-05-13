@@ -1,56 +1,30 @@
-import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
-import { router } from "expo-router";
+import { TouchableOpacity, Text, View } from "react-native";
 
-const CategoryButton = ({ IconComponent, IconName, Upload, categoryValue, isSelected, onPress }) => {
-  const handlePress = () => {
-    if (Upload) {
-      // Upload logic if needed
-    } else if (onPress) {
-      // Use custom press handler if provided
-      onPress();
-    } else {
-      // Default navigation behavior
-      router.push({
-        pathname: "/category/[categoryName]",
-        params: { categoryName: categoryValue || IconName },
-      });
-    }
-  };
-
+const CategoryButton = ({ IconComponent, IconName, categoryValue, onPress }) => {
   return (
     <TouchableOpacity
-      style={{ marginRight: 8 }}
-      onPress={handlePress}
+      onPress={onPress}
+      className="bg-black-100 rounded-xl px-3 py-2 items-center justify-center"
+      style={{
+        width: 90,
+        marginRight: 8,
+      }}
     >
-      <View style={{ alignItems: "center" }}>
-        <View
-          style={{
-            height: 65,
-            width: 65,
-            borderRadius: 999,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: isSelected ? "#6366f1" : "#F4F4F4",
-            marginBottom: 10,
-            borderWidth: isSelected ? 2 : 0,
-            borderColor: "#a5b4fc",
-          }}
-        >
-          {IconComponent && (
-            <IconComponent 
-              size={32}
-              color={isSelected ? "#ffffff" : "#333333"}
-            />
-          )}
-        </View>
-        <Text 
-          className={`${isSelected ? "text-secondary" : "text-gray-100"}`} 
-          style={{ textAlign: "center", fontSize: 14, fontWeight: "500" }}
-        >
-          {IconName}
-        </Text>
-      </View>
+      {IconComponent ? (
+        <IconComponent color="white" size={24} />
+      ) : (
+        <View style={{ width: 24, height: 24 }} />
+      )}
+      <Text
+        className="text-xs text-white text-center mt-1"
+        numberOfLines={2}
+        style={{
+          lineHeight: 16,
+        }}
+      >
+        {IconName}
+      </Text>
     </TouchableOpacity>
   );
 };

@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'notifications',
     'corsheaders',
     'rest_framework_simplejwt',
+    'disputes',
+    'condition_reports'
 ]
 
 # REST Framework settings

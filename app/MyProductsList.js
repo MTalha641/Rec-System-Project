@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +23,10 @@ const MyProductsList = () => {
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { token } = useContext(AuthContext);
+  const [waitingModalVisible, setWaitingModalVisible] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [pollingError, setPollingError] = useState(null);
+  const [currentBookingId, setCurrentBookingId] = useState(null);
 
   // Function to trigger a manual refresh
   const refreshReservations = useCallback(() => {
@@ -98,6 +103,70 @@ const MyProductsList = () => {
     }
   }, [token, refreshReservations]);
 
+  // Initiate Return Handler
+  const handleInitiateReturn = useCallback(async (bookingId) => {
+    if (!token || !bookingId) return;
+    setCurrentBookingId(bookingId);
+    setWaitingModalVisible(true);
+    setPollingError(null);
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      const response = await axios.post(
+        `${API_URL}/api/bookings/initiate-return/${bookingId}/`,
+        {},
+        { headers }
+      );
+      console.log("Return initiated response:", response.data);
+      // Start polling for status
+      setPolling(true);
+      pollReturnStatus(bookingId);
+    } catch (error) {
+      console.error("Error initiating return:", error.response?.data || error.message);
+      setWaitingModalVisible(false);
+      Alert.alert("Error", "Failed to initiate return request.");
+    }
+  }, [token]);
+
+  // Polling function
+  const pollReturnStatus = useCallback((bookingId) => {
+    let attempts = 0;
+    const maxAttempts = 30; // ~1 min
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setPolling(false);
+        setPollingError("Timeout waiting for rider to accept return.");
+        return;
+      }
+      try {
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        const response = await axios.get(
+          `${API_URL}/api/bookings/delivery-details/${bookingId}/`,
+          { headers }
+        );
+        console.log("Polling return status:", response.data.return_status);
+        if (response.data.return_status === 'in_return') {
+          setPolling(false);
+          setWaitingModalVisible(false);
+          setPollingError(null);
+          router.push(`/ReturnMapsScreen?bookingId=${bookingId}`);
+          return;
+        }
+      } catch (error) {
+        console.error("Error polling return status:", error);
+        setPollingError("Error polling return status.");
+      }
+      attempts++;
+      setTimeout(poll, 2000);
+    };
+    poll();
+  }, [token]);
+
   // Debug render - display token status and API details (only in development)
   const renderDebugInfo = useCallback(() => {
     if (__DEV__) {
@@ -124,8 +193,8 @@ const MyProductsList = () => {
       id: item.id,
       total_price: item.total_price,
       item_name: item.item_name,
-      start_date: item.start_date,
-      end_date: item.end_date
+      delivery_status: item.delivery_status,
+      return_status: item.return_status
     });
     
     return (
@@ -156,21 +225,19 @@ const MyProductsList = () => {
                 Total: PKR {item.total_price}
               </Text>
             )}
+            <Text className="text-xs text-gray-400">
+              Status: {item.delivery_status === 'delivered' ? 'Delivered' : 
+                      item.delivery_status === 'in_delivery' ? 'In Delivery' : 'Pending'}
+            </Text>
           </View>
         </View>
         {selectedTab === "reservation" && (
           <TouchableOpacity
-            className="mt-2 bg-green-500 p-2 rounded-lg"
-            onPress={() => {
-              router.push('/(tabs)/bookmark');
-              Alert.alert(
-                "Payment & Delivery",
-                "To make a payment and initiate delivery, please go to the Approved tab in Bookmarks and click on 'Initiate Delivery' for this item."
-              );
-            }}
+            className="mt-2 bg-orange-500 p-2 rounded-lg"
+            onPress={() => handleInitiateReturn(item.id)}
           >
             <Text className="text-white text-center">
-              View in Bookmarks
+              Initiate Return
             </Text>
           </TouchableOpacity>
         )}
@@ -249,6 +316,40 @@ const MyProductsList = () => {
           )}
         </ScrollView>
       </View>
+      <Modal
+        transparent={true}
+        visible={waitingModalVisible}
+        animationType="slide"
+        onRequestClose={() => setWaitingModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View className="bg-white p-7 rounded-2xl w-[90%] max-w-[400px] items-center">
+            <Text className="text-2xl text-center font-bold mt-5 text-black">Waiting for Rider to Accept Return</Text>
+            <Text className="text-md text-gray-500 text-center mt-3 mb-4">Your return request has been sent. Please wait for the rider/owner to accept the return.</Text>
+            {pollingError && <Text className="text-red-500 text-center mb-2">{pollingError}</Text>}
+            <ActivityIndicator size="large" color="#FFA001" style={{ marginVertical: 10 }} />
+            <TouchableOpacity
+              className="mt-4 bg-blue-500 px-4 py-2 rounded-lg"
+              onPress={() => {
+                if (currentBookingId) pollReturnStatus(currentBookingId);
+              }}
+            >
+              <Text className="text-white text-center">Refresh Status</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="mt-2 bg-gray-400 px-4 py-2 rounded-lg"
+              onPress={() => setWaitingModalVisible(false)}
+            >
+              <Text className="text-black text-center">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

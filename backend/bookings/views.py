@@ -301,7 +301,8 @@ class BookingDeliveryDetailsView(APIView):
                 "payment_status": payment.status,
                 "payment_method": payment.payment_method,
                 "payment_created_at": payment.created_at,
-                "delivery_status": getattr(booking, 'delivery_status', 'pending')
+                "delivery_status": getattr(booking, 'delivery_status', 'pending'),
+                "return_status": getattr(booking, 'return_status', 'not_started'),
                 # Add other relevant fields as needed
             }
 
@@ -343,12 +344,11 @@ class PendingDeliveriesView(APIView):
                 ).order_by('-created_at').first()
                 
                 if payment:
-                    # Get the delivery status - default to 'pending' if not set
                     delivery_status = getattr(booking, 'delivery_status', 'pending')
-                    
+                    return_status = getattr(booking, 'return_status', 'not_started')
                     # Only include if delivery isn't already in progress or completed
-                    if delivery_status not in ['in_delivery', 'delivered']:
-                        # Get location from item
+                    # For return rides, include if return_status is 'pending' or 'in_return'
+                    if (return_status in ['pending', 'in_return']) or (delivery_status not in ['in_delivery', 'delivered'] and return_status == 'not_started'):
                         item_location = booking.item.location
                         origin_address = booking.item.address or "Item Location"
                         
@@ -371,7 +371,9 @@ class PendingDeliveriesView(APIView):
                             "destination_address": "Customer Location",
                             "payment_status": payment.status,
                             "payment_method": payment.payment_method,
-                            "booking_created_at": booking.created_at.isoformat()
+                            "booking_created_at": booking.created_at.isoformat(),
+                            "delivery_status": delivery_status,
+                            "return_status": return_status
                         })
             
             # If no bookings found, provide test data
@@ -443,3 +445,52 @@ class UpdateDeliveryStatusView(APIView):
             print(f"Error updating delivery status: {e}")
             return Response({"message": "An error occurred updating the delivery status."}, 
                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InitiateReturnView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            return Response({"message": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Remove validation check to allow returns regardless of status
+        # Set return_status to 'pending' and delivery_status to 'pending' to start the return flow
+        booking.return_status = 'pending'
+        booking.delivery_status = 'pending'
+        booking.save()
+
+        return Response({
+            "message": "Return initiated. Waiting for owner/rider to accept.",
+            "booking_id": booking.id,
+            "delivery_status": booking.delivery_status,
+            "return_status": booking.return_status
+        }, status=status.HTTP_200_OK)
+
+
+class AcceptReturnView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            return Response({"message": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Only allow accept if return is pending
+        if booking.return_status != 'pending':
+            return Response({"message": "Return is not pending or already in progress."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Set return_status to 'in_return' and delivery_status to 'in_delivery' to start the return delivery
+        booking.return_status = 'in_return'
+        booking.delivery_status = 'in_delivery'
+        booking.save()
+
+        return Response({
+            "message": "Return accepted. Return delivery in progress.",
+            "booking_id": booking.id,
+            "delivery_status": booking.delivery_status,
+            "return_status": booking.return_status
+        }, status=status.HTTP_200_OK)

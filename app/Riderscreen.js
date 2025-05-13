@@ -11,6 +11,7 @@ import {
   Modal,
   RefreshControl,
   Alert,
+  BackHandler,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
@@ -41,6 +42,7 @@ const Riderscreen = () => {
   const [origin, setOrigin] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [deliveryStatus, setDeliveryStatus] = useState('pending');
+  const [apiCallAttempted, setApiCallAttempted] = useState(false);
 
   const latestIndexRef = useRef(0);
   const effectRan = useRef(false);
@@ -52,6 +54,17 @@ const Riderscreen = () => {
     latitude: animatedLatitude,
     longitude: animatedLongitude,
   }), [animatedLatitude, animatedLongitude]);
+
+  // Handle back button press
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Navigate directly to vendorhome instead of going back
+      router.replace("/vendorhome");
+      return true; // Prevent default behavior
+    });
+
+    return () => backHandler.remove();
+  }, []);
 
   useEffect(() => {
     if (!paramsLogged.current && bookingId) {
@@ -76,17 +89,21 @@ const Riderscreen = () => {
   }, []);
 
   const fetchBookingDetails = async () => {
-    if (!bookingId || !token) {
+    if (!bookingId || !token || apiCallAttempted) {
       if (!bookingId) {
         setError("Missing booking ID. Please go back and try again.");
         setIsLoading(false);
       } else if (!token) {
         setError("Authentication token not found. Please login and try again.");
         setIsLoading(false);
+      } else if (apiCallAttempted) {
+        // Already attempted, don't try again unless explicitly refreshed
+        return;
       }
       return;
     }
     
+    setApiCallAttempted(true);
     setIsLoading(true);
     
     try {
@@ -129,7 +146,11 @@ const Riderscreen = () => {
       effectRan.current = true;
     } catch (err) {
       console.error("Error fetching booking details:", err.message);
-      setError("Failed to fetch booking details. Please try again later.");
+      if (err.response?.status === 400) {
+        setError("This booking is not approved for delivery yet or payment is not completed.");
+      } else {
+        setError("Failed to fetch booking details. Please try again later.");
+      }
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -143,6 +164,7 @@ const Riderscreen = () => {
   const onRefresh = () => {
     setRefreshing(true);
     effectRan.current = false;
+    setApiCallAttempted(false); // Allow one more API call
     fetchBookingDetails();
   };
 
@@ -237,8 +259,8 @@ const Riderscreen = () => {
           containerStyles="mt-4" 
         />
         <CustomButton 
-          title="Go Back" 
-          handlePress={() => router.back()} 
+          title="Go Back to Home" 
+          handlePress={() => router.replace("/vendorhome")} 
           containerStyles="mt-2" 
         />
       </View>
@@ -259,7 +281,7 @@ const Riderscreen = () => {
       <View className="flex-1 justify-center items-center bg-primary p-4">
         <Text className="text-red-500 text-center text-lg">Error</Text>
         <Text className="text-white text-center mt-2">{error}</Text>
-        <CustomButton title="Go Back" handlePress={() => router.back()} containerStyles="mt-4" />
+        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/vendorhome")} containerStyles="mt-4" />
       </View>
     );
   }
@@ -268,7 +290,7 @@ const Riderscreen = () => {
     return (
       <View className="flex-1 justify-center items-center bg-primary p-4">
         <Text className="text-white text-center">Booking details not found.</Text>
-        <CustomButton title="Go Back" handlePress={() => router.back()} containerStyles="mt-4" />
+        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/vendorhome")} containerStyles="mt-4" />
       </View>
     );
   }
@@ -388,10 +410,32 @@ const Riderscreen = () => {
               itemReceived ? "bg-orange-500" : "bg-orange-300"
             }`}
             handlePress={() => {
-              if (itemReceived) {
-                router.push("/home");
+              // Comment out navigation to InspectionReport
+              /* 
+              if (itemReceived && bookingDetails?.id) {
+                router.push({
+                  pathname: "/InspectionReport",
+                  params: { bookingId: bookingDetails.id }
+                });
+              } else if (itemReceived && bookingId) {
+                router.push({
+                  pathname: "/InspectionReport",
+                  params: { bookingId: bookingId }
+                });
+              } else {
+                Alert.alert("Error", "Cannot proceed without booking information");
               }
+              */
+              
+              // Navigate to home screen instead
+              router.replace("/vendorhome");
             }}
+          />
+          
+          <CustomButton
+            title="Cancel and Go Back to Home"
+            containerStyles="mt-2 w-full bg-gray-600"
+            handlePress={() => router.replace("/vendorhome")}
           />
         </View>
       </ScrollView>

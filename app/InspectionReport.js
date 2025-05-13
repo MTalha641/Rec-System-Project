@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import { Picker } from "@react-native-picker/picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,9 @@ import FormField from "../components/FormField";
 import Modal from "react-native-modal";
 import logo from "../assets/images/RLogo.png";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import { API_URL } from "@env";
+import AuthContext from "./context/AuthContext";
 
 const inspectionCategories = [
   { name: "Item Working Properly" },
@@ -27,6 +30,8 @@ const inspectionCategories = [
 
 const InspectionReport = () => {
   const router = useRouter();
+  const { bookingId } = useLocalSearchParams();
+  const { token, user } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     category: "",
@@ -36,6 +41,17 @@ const InspectionReport = () => {
 
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Check if we have required data
+  useEffect(() => {
+    if (!bookingId) {
+      Alert.alert(
+        "Missing Information",
+        "Booking ID is required to create an inspection report.",
+        [{ text: "Go Back", onPress: () => router.back() }]
+      );
+    }
+  }, [bookingId]);
 
   const openPicker = async () => {
     try {
@@ -59,18 +75,61 @@ const InspectionReport = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.category || !form.description || !form.image) {
       Alert.alert("Missing Fields", "Please complete all fields before submitting.");
       return;
     }
 
-    // Simulate upload (replace this with real API later)
+    if (!bookingId) {
+      Alert.alert("Error", "Booking ID is missing.");
+      return;
+    }
+
+    if (!user || !user.id) {
+      Alert.alert("Error", "User information is missing. Please log in again.");
+      return;
+    }
+
     setUploading(true);
-    setTimeout(() => {
-      setUploading(false);
+    
+    try {
+      // Create form data for image upload
+      const formData = new FormData();
+      formData.append('booking_id', bookingId);
+      formData.append('report_type', 'checkout');
+      formData.append('overall_condition', form.category);
+      formData.append('notes', form.description);
+      formData.append('reported_by_id', user.id);
+      formData.append('checkout_image', {
+        uri: form.image.uri,
+        name: form.image.name,
+        type: form.image.type
+      });
+      
+      // Submit the inspection report
+      const response = await axios.post(
+        `${API_URL}/api/condition_reports/`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      console.log("Inspection report submitted:", response.data);
       setSuccess(true);
-    }, 1500);
+    } catch (error) {
+      console.error("Error submitting inspection report:", error.response?.data || error.message);
+      Alert.alert(
+        "Submission Failed", 
+        "Failed to submit inspection report. Please try again."
+      );
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
