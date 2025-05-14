@@ -411,15 +411,23 @@ const StripePaymentGateway = () => {
         { headers }
       );
       
-      if (response.data && response.data.id) {
-        setPaymentId(response.data.id);
-        await updatePaymentStatus(response.data.id);
+      console.log("Cash payment response:", response.data);
+      
+      // If we get any response with status 200, consider it successful
+      if (response.status === 200) {
+        const paymentId = response.data?.id || response.data?.payment_id;
+        if (paymentId) {
+          setPaymentId(paymentId);
+          await updatePaymentStatus(paymentId);
+        }
+        // Show success modal regardless of whether we got an ID
         setSuccess(true);
       } else {
         Alert.alert("Error", "Failed to create payment record.");
       }
     } catch (error) {
       console.error("Error creating COD payment:", error.message);
+      console.error("Error details:", error.response?.data);
       Alert.alert("Error", "Failed to process cash on delivery payment.");
     } finally {
       setLoading(false);
@@ -604,7 +612,11 @@ const StripePaymentGateway = () => {
           <View className="bg-white p-7 rounded-2xl w-[90%] max-w-[400px]">
             <Image source={logo} className="w-28 h-28 mt-5 self-center" />
             <Text className="text-2xl text-center font-bold mt-5 text-black">Payment Successful!</Text>
-            <Text className="text-md text-gray-500 text-center mt-3">Your payment has been processed. We're now waiting for a driver to accept your delivery request.</Text>
+            <Text className="text-md text-gray-500 text-center mt-3">
+              {paymentMethod === "Cash on Delivery" 
+                ? "Your cash on delivery payment has been registered. We're now waiting for a driver to accept your delivery request." 
+                : "Your payment has been processed. We're now waiting for a driver to accept your delivery request."}
+            </Text>
             <CustomButton 
               title="Track Delivery Status" 
               containerStyles="mt-5 w-full" 

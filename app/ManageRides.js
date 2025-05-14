@@ -36,10 +36,14 @@ const ManageRides = () => {
         }
       );
       console.log("Pending dispatch deliveries fetched:", response.data);
-      // Filter for non-return rides (return_status is not 'pending' or 'in_return')
+      
+      // Include all rides that have delivery_status as 'in_delivery' or 'pending'
+      // regardless of return status
       const dispatchRidesData = (response.data || []).filter(
-        ride => !ride.return_status || ride.return_status === 'not_started'
+        ride => ride.delivery_status === 'in_delivery' || ride.delivery_status === 'pending'
       );
+      
+      console.log("Filtered dispatch rides:", dispatchRidesData.length);
       setDispatchRides(dispatchRidesData);
     } catch (error) {
       console.error("Error fetching dispatch rides:", error);
@@ -75,10 +79,13 @@ const ManageRides = () => {
         `${API_URL}/api/bookings/pending-deliveries/`,
         { headers }
       );
+      
       // Filter for return rides: return_status === 'pending' or 'in_return'
       const returnRidesData = (response.data || []).filter(
         ride => ride.return_status === 'pending' || ride.return_status === 'in_return'
       );
+      
+      console.log("Filtered return rides:", returnRidesData.length);
       setReturnRides(returnRidesData);
       setError(null);
     } catch (error) {
@@ -258,10 +265,21 @@ const ManageRides = () => {
               <View className="flex-row space-x-4 pt-2">
                 {selectedTab === 'dispatch' && (
                   <TouchableOpacity
-                    className="bg-green-500 flex-1 py-2 rounded-xl"
-                    onPress={() => handleApproveRide(ride.id || ride.booking_id)}>
+                    className={`bg-green-500 flex-1 py-2 rounded-xl ${
+                      ride.delivery_status === 'in_delivery' || ride.delivery_status === 'delivered' 
+                        ? 'opacity-50' 
+                        : ''
+                    }`}
+                    onPress={() => 
+                      (ride.delivery_status !== 'in_delivery' && ride.delivery_status !== 'delivered') && 
+                      handleApproveRide(ride.id || ride.booking_id)
+                    }
+                    disabled={ride.delivery_status === 'in_delivery' || ride.delivery_status === 'delivered'}
+                  >
                     <Text className="text-white text-center font-semibold">
-                      Approve Dispatch
+                      {ride.delivery_status === 'in_delivery' || ride.delivery_status === 'delivered' 
+                        ? 'Already Dispatched' 
+                        : 'Approve Dispatch'}
                     </Text>
                   </TouchableOpacity>
                 )}
