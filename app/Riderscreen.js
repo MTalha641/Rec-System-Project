@@ -58,8 +58,8 @@ const Riderscreen = () => {
   // Handle back button press
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Navigate directly to vendorhome instead of going back
-      router.replace("/vendorhome");
+      // Navigate directly to home instead of going back
+      router.replace("/home");
       return true; // Prevent default behavior
     });
 
@@ -260,7 +260,7 @@ const Riderscreen = () => {
         />
         <CustomButton 
           title="Go Back to Home" 
-          handlePress={() => router.replace("/vendorhome")} 
+          handlePress={() => router.replace("/home")} 
           containerStyles="mt-2" 
         />
       </View>
@@ -281,7 +281,7 @@ const Riderscreen = () => {
       <View className="flex-1 justify-center items-center bg-primary p-4">
         <Text className="text-red-500 text-center text-lg">Error</Text>
         <Text className="text-white text-center mt-2">{error}</Text>
-        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/vendorhome")} containerStyles="mt-4" />
+        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/home")} containerStyles="mt-4" />
       </View>
     );
   }
@@ -290,7 +290,7 @@ const Riderscreen = () => {
     return (
       <View className="flex-1 justify-center items-center bg-primary p-4">
         <Text className="text-white text-center">Booking details not found.</Text>
-        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/vendorhome")} containerStyles="mt-4" />
+        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/home")} containerStyles="mt-4" />
       </View>
     );
   }
@@ -428,14 +428,14 @@ const Riderscreen = () => {
               */
               
               // Navigate to home screen instead
-              router.replace("/vendorhome");
+              router.replace("/home");
             }}
           />
           
           <CustomButton
             title="Cancel and Go Back to Home"
             containerStyles="mt-2 w-full bg-gray-600"
-            handlePress={() => router.replace("/vendorhome")}
+            handlePress={() => router.replace("/home")}
           />
         </View>
       </ScrollView>

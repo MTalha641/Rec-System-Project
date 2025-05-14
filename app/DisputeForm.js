@@ -190,11 +190,11 @@ const DisputeForm = () => {
                 Please proceed.
               </Text>
               <CustomButton
-                title="Back Home"
+                title="View Dispute Results"
                 containerStyles="mt-5 w-full"
                 handlePress={() => {
                   setSuccess(false);
-                  router.push("/home");
+                  router.push("/DisputeResults");
                 }}
               />
             </View>

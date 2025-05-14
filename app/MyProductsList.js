@@ -23,10 +23,19 @@ const MyProductsList = () => {
   const [myItems, setMyItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const [returnInitiatedModalVisible, setReturnInitiatedModalVisible] = useState(false);
   const [currentBookingId, setCurrentBookingId] = useState(null);
   const [initiateReturnLoading, setInitiateReturnLoading] = useState(false);
+
+  // Clear data when tab changes to prevent stale data
+  useEffect(() => {
+    if (selectedTab === "reservation") {
+      setMyItems([]);
+    } else {
+      setReservations([]);
+    }
+  }, [selectedTab]);
 
   // Function to trigger a manual refresh
   const refreshReservations = useCallback(() => {
@@ -43,14 +52,21 @@ const MyProductsList = () => {
 
     try {
       setLoading(true);
+      // Add cache-busting timestamp
+      const timestamp = new Date().getTime();
       const headers = {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       };
 
-      console.log("Fetching reservations from:", `${API_URL}/api/bookings/reservations/`);
+      console.log("Fetching reservations from:", `${API_URL}/api/bookings/reservations/?_t=${timestamp}`);
+      console.log("Current user:", user?.id, user?.username);
+      
       const response = await axios.get(
-        `${API_URL}/api/bookings/reservations/`,
+        `${API_URL}/api/bookings/reservations/?_t=${timestamp}`,
         { headers }
       );
 
@@ -70,7 +86,7 @@ const MyProductsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user?.id]);
 
   // Function to fetch user's created items
   const fetchMyItems = useCallback(async () => {
@@ -82,14 +98,21 @@ const MyProductsList = () => {
 
     try {
       setLoading(true);
+      // Add cache-busting timestamp
+      const timestamp = new Date().getTime();
       const headers = {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       };
 
-      console.log("Fetching my items from:", `${API_URL}/api/items/myitems/`);
+      console.log("Fetching my items from:", `${API_URL}/api/items/myitems/?_t=${timestamp}`);
+      console.log("Current user:", user?.id, user?.username);
+      
       const response = await axios.get(
-        `${API_URL}/api/items/myitems/`,
+        `${API_URL}/api/items/myitems/?_t=${timestamp}`,
         { headers }
       );
 
@@ -109,7 +132,15 @@ const MyProductsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user?.id]);
+
+  // Force refresh when user changes
+  useEffect(() => {
+    // Clear existing data when user changes
+    setMyItems([]);
+    setReservations([]);
+    setRefreshTrigger(prev => prev + 1);
+  }, [user?.id]);
 
   // Fetch data when component mounts or dependencies change
   useEffect(() => {
@@ -118,7 +149,7 @@ const MyProductsList = () => {
     } else {
       fetchMyItems();
     }
-  }, [fetchReservations, fetchMyItems, refreshTrigger, selectedTab]);
+  }, [fetchReservations, fetchMyItems, refreshTrigger, selectedTab, user?.id]);
 
   // Handle cancellation of a reservation
   const handleCancelReservation = useCallback(async (reservationId) => {
@@ -390,13 +421,31 @@ const MyProductsList = () => {
     );
   });
 
-  // Handlers for tab selection
+  // Handlers for tab selection with data refresh
   const handleReservationTab = useCallback(() => {
     setSelectedTab("reservation");
+    setRefreshTrigger(prev => prev + 1);
   }, []);
 
   const handleCompletedTab = useCallback(() => {
     setSelectedTab("completed");
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  // Component mount - clear any stale data
+  useEffect(() => {
+    // Clear any stale data on component mount
+    setMyItems([]);
+    setReservations([]);
+    
+    // Log current user for debugging
+    console.log("MyProductsList mounted with user:", user?.id, user?.username);
+    
+    return () => {
+      // Clear data on unmount
+      setMyItems([]);
+      setReservations([]);
+    };
   }, []);
 
   return (
@@ -406,6 +455,9 @@ const MyProductsList = () => {
           <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Products</Text>
+        <TouchableOpacity onPress={refreshReservations} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
       <View className="flex-1 p-5 bg-[#161622]">
         <View className="flex-row justify-center">
@@ -537,6 +589,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     marginLeft: 10,
+    flex: 1,
+  },
+  refreshButton: {
+    padding: 5,
   },
   card: {
     flexDirection: "row",

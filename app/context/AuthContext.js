@@ -59,9 +59,14 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("Fetching user details with token:", currentToken.substring(0, 10) + "...");
       
-      const response = await axios.get(`${API_URL}/api/users/getuserdetails/`, {
+      // Add cache-busting timestamp to prevent stale data
+      const timestamp = new Date().getTime();
+      const response = await axios.get(`${API_URL}/api/users/getuserdetails/?_t=${timestamp}`, {
         headers: {
           Authorization: `Bearer ${currentToken}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
       });
 
@@ -92,6 +97,8 @@ export const AuthProvider = ({ children }) => {
 
       // Store user type in AsyncStorage for easy retrieval
       await AsyncStorage.setItem("userType", userData.userType || "Normal User");
+      await AsyncStorage.setItem("currentUserId", userData.id.toString());
+      await AsyncStorage.setItem("currentUsername", userData.username);
       
       setUser(userData);
     } catch (error) {
@@ -165,14 +172,26 @@ export const AuthProvider = ({ children }) => {
   // Logout and clear tokens
   const logout = async () => {
     try {
+      // Clear all auth-related items from AsyncStorage
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
+      await AsyncStorage.removeItem('userType');
+      await AsyncStorage.removeItem('currentUserId');
+      await AsyncStorage.removeItem('currentUsername');
+      
+      // Force clear the user state immediately
       setToken(null);
       setRefreshToken(null);
       setUser(null);
-      router.replace('/sign-in');
+      
+      // Add a small delay before navigation to ensure state is cleared
+      setTimeout(() => {
+        router.replace('/sign-in');
+      }, 100);
     } catch (error) {
       console.error('Failed to remove tokens during logout:', error);
+      // Still attempt to navigate even if there was an error
+      router.replace('/sign-in');
     }
   };
 

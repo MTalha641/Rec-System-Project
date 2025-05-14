@@ -71,6 +71,7 @@ const RootLayout = () => {
           <Stack.Screen name="InspectionReport" options={{ headerShown: false }}/>
           <Stack.Screen name="RideHistory" options={{ headerShown: false }}/>
           <Stack.Screen name="ManageRides" options={{ headerShown: false }}/>
+          <Stack.Screen name="DisputeResults" options={{ headerShown: false }}/>
         </Stack>
       </AuthProvider>
     </StripeProvider>
