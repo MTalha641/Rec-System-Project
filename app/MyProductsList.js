@@ -20,6 +20,7 @@ import AuthContext from "./context/AuthContext";
 const MyProductsList = () => {
   const [selectedTab, setSelectedTab] = useState("reservation");
   const [reservations, setReservations] = useState([]);
+  const [myItems, setMyItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { token } = useContext(AuthContext);
@@ -71,10 +72,53 @@ const MyProductsList = () => {
     }
   }, [token]);
 
+  // Function to fetch user's created items
+  const fetchMyItems = useCallback(async () => {
+    if (!token) {
+      console.error('No auth token found');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      console.log("Fetching my items from:", `${API_URL}/api/items/myitems/`);
+      const response = await axios.get(
+        `${API_URL}/api/items/myitems/`,
+        { headers }
+      );
+
+      console.log("My Items API Response:", response.data);
+
+      if (response.data && Array.isArray(response.data)) {
+        console.log("Setting my items:", response.data);
+        setMyItems(response.data);
+      } else {
+        console.error("API did not return an array:", response.data);
+        setMyItems([]);
+      }
+    } catch (error) {
+      console.error("Error fetching my items:", error.message);
+      console.error("Error response:", error.response?.data);
+      setMyItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
   // Fetch data when component mounts or dependencies change
   useEffect(() => {
-    fetchReservations();
-  }, [fetchReservations, refreshTrigger, selectedTab]);
+    if (selectedTab === "reservation") {
+      fetchReservations();
+    } else {
+      fetchMyItems();
+    }
+  }, [fetchReservations, fetchMyItems, refreshTrigger, selectedTab]);
 
   // Handle cancellation of a reservation
   const handleCancelReservation = useCallback(async (reservationId) => {
@@ -138,8 +182,8 @@ const MyProductsList = () => {
       return (
         <View style={{ padding: 10, borderWidth: 1, borderColor: '#666', marginBottom: 10 }}>
           <Text style={{ color: 'white', fontSize: 12 }}>Token: {token ? "Available" : "Not available"}</Text>
-          <Text style={{ color: 'white', fontSize: 12 }}>API URL: {API_URL}/api/bookings/reservations/</Text>
-          <Text style={{ color: 'white', fontSize: 12 }}>Reservations count: {reservations.length}</Text>
+          <Text style={{ color: 'white', fontSize: 12 }}>API URL: {API_URL}/api/{selectedTab === "reservation" ? "bookings/reservations/" : "items/myitems/"}</Text>
+          <Text style={{ color: 'white', fontSize: 12 }}>Items count: {selectedTab === "reservation" ? reservations.length : myItems.length}</Text>
           <TouchableOpacity
             style={{ backgroundColor: '#555', padding: 5, borderRadius: 5, marginTop: 5 }}
             onPress={refreshReservations}
@@ -150,7 +194,7 @@ const MyProductsList = () => {
       );
     }
     return null;
-  }, [token, reservations.length, refreshReservations]);
+  }, [token, reservations.length, myItems.length, refreshReservations, selectedTab]);
 
   // Memoized reservation card component
   const ReservationCard = memo(({ item }) => {
@@ -160,7 +204,7 @@ const MyProductsList = () => {
       item_name: item.item_name,
       delivery_status: item.delivery_status,
       return_status: item.return_status,
-      item_id:item.item_id
+      item_id: item.item_id
     });
 
     return (
@@ -197,28 +241,145 @@ const MyProductsList = () => {
             </Text>
           </View>
         </View>
-        {selectedTab === "reservation" && (
-          <TouchableOpacity
-            className="mt-2 bg-orange-500 p-2 rounded-lg"
-            onPress={() => handleInitiateReturn(item.id)}
-            disabled={initiateReturnLoading}
-          >
-            {initiateReturnLoading && currentBookingId === item.id ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text className="text-white text-center">
-                Initiate Return
-              </Text>
-            )}
-          </TouchableOpacity>
-        )}
-        {selectedTab === "completed" && (
+        <TouchableOpacity
+          className="mt-2 bg-orange-500 p-2 rounded-lg"
+          onPress={() => handleInitiateReturn(item.id)}
+          disabled={initiateReturnLoading}
+        >
+          {initiateReturnLoading && currentBookingId === item.id ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text className="text-white text-center">
+              Initiate Return
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  });
+
+  // Memoized item card component for user's created items
+  const ItemCard = memo(({ item }) => {
+    console.log("Rendering Item Card with item:", {
+      id: item.id,
+      title: item.title,
+      price: item.price,
+      latest_booking: item.latest_booking
+    });
+
+    // Check if this item has a booking that's eligible for dispute filing
+    const canFileDispute = item.latest_booking && 
+      (item.latest_booking.delivery_status === 'delivered' || 
+       item.latest_booking.delivery_status === 'in_delivery') && 
+      (item.latest_booking.return_status === 'returned' || 
+       item.latest_booking.return_status === 'in_return' || 
+       item.latest_booking.return_status === 'completed');
+
+    // Function to fetch the latest booking for this item and navigate to dispute form
+    const handleFileDispute = async () => {
+      try {
+        // If we already have the booking info from the API, use it directly
+        if (item.latest_booking && item.latest_booking.id) {
+          router.push({
+            pathname: "DisputeForm",
+            params: { 
+              itemId: item.id,
+              bookingId: item.latest_booking.id
+            }
+          });
+          return;
+        }
+
+        // Otherwise, fetch the latest booking
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        
+        const response = await axios.get(
+          `${API_URL}/api/bookings/item/${item.id}/latest/`,
+          { headers }
+        );
+        
+        console.log("Latest booking response:", response.data);
+        
+        // Navigate to dispute form with both itemId and bookingId
+        if (response.data && response.data.id) {
+          router.push({
+            pathname: "DisputeForm",
+            params: { 
+              itemId: item.id,
+              bookingId: response.data.id
+            }
+          });
+        } else {
+          // If no booking found, just pass the item ID
+          router.push({
+            pathname: "DisputeForm",
+            params: { itemId: item.id }
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching latest booking:", error);
+        // If error, just navigate with item ID
+        router.push({
+          pathname: "DisputeForm",
+          params: { itemId: item.id }
+        });
+      }
+    };
+
+    // Get booking status text to display
+    const getBookingStatusText = () => {
+      if (!item.latest_booking) return "No booking";
+      
+      if (item.latest_booking.return_status === 'completed' || 
+          item.latest_booking.return_status === 'returned') {
+        return "Return completed";
+      }
+      
+      if (item.latest_booking.return_status === 'in_return') {
+        return "Return in progress";
+      }
+      
+      if (item.latest_booking.delivery_status === 'delivered') {
+        return "Delivered";
+      }
+      
+      if (item.latest_booking.delivery_status === 'in_delivery') {
+        return "In delivery";
+      }
+      
+      return "Booking " + item.latest_booking.status;
+    };
+
+    return (
+      <View
+        key={item.id || `item-${Math.random()}`}
+        className="bg-[#1E1E2D] rounded-lg p-4 mb-4 shadow-md"
+      >
+        <View className="flex-row items-center">
+          <Image
+            source={{ uri: item.image || 'https://via.placeholder.com/150' }}
+            className="w-16 h-16 rounded-lg mr-4"
+            style={{ width: 64, height: 64, borderRadius: 8, marginRight: 15 }}
+          />
+          <View className="flex-1">
+            <Text className="text-lg font-semibold text-white">
+              {item.title}
+            </Text>
+            <Text className="text-white">
+              Price: PKR {item.price}/day
+            </Text>
+            <Text className="text-xs text-gray-400">
+              {item.description?.substring(0, 50)}...
+            </Text>
+          </View>
+        </View>
+        {canFileDispute && (
           <TouchableOpacity
             className="mt-2 bg-red-500 p-2 rounded-lg"
-            onPress={() => router.push({
-              pathname: "DisputeForm",
-              params: { bookingId: item.id, itemId: item.item_id }
-            })}
+            onPress={handleFileDispute}
           >
             <Text className="text-white text-center">
               File Dispute
@@ -268,25 +429,64 @@ const MyProductsList = () => {
           </TouchableOpacity>
         </View>
 
-        {renderDebugInfo()}
+        {/* Comment out debug info */}
+        {/* {renderDebugInfo()} */}
 
         <ScrollView className="mt-4">
           {loading ? (
             <View className="items-center justify-center p-4">
               <ActivityIndicator size="large" color="#3498db" />
-              <Text className="text-white mt-2">Loading reservations...</Text>
+              <Text className="text-white mt-2">Loading {selectedTab === "reservation" ? "reservations" : "items"}...</Text>
             </View>
-          ) : reservations.length === 0 ? (
+          ) : selectedTab === "reservation" ? (
+            reservations.length === 0 ? (
+              <Text className="text-center text-white mt-4">
+                No reservations found
+              </Text>
+            ) : (
+              reservations.map((item) => (
+                <ReservationCard
+                  key={item.id || `reservation-${Math.random()}`}
+                  item={item}
+                />
+              ))
+            )
+          ) : myItems.length === 0 ? (
             <Text className="text-center text-white mt-4">
-              No reservations found
+              You haven't created any items yet
             </Text>
           ) : (
-            reservations.map((item) => (
-              <ReservationCard
-                key={item.id || `reservation-${Math.random()}`}
-                item={item}
-              />
-            ))
+            // Filter items to only show those with bookings that have delivery or return status
+            (() => {
+              const eligibleItems = myItems.filter(item => 
+                item.latest_booking && (
+                  // Use AND condition between delivery status and return status
+                  (item.latest_booking.delivery_status === 'delivered' || 
+                   item.latest_booking.delivery_status === 'in_delivery') && 
+                  (item.latest_booking.return_status === 'returned' || 
+                   item.latest_booking.return_status === 'in_return' || 
+                   item.latest_booking.return_status === 'completed')
+                  
+                  // For testing/development, uncomment this to include all items with any booking
+                  // || item.latest_booking.id
+                )
+              );
+              
+              if (eligibleItems.length === 0) {
+                return (
+                  <Text className="text-center text-white mt-4">
+                    No items with completed bookings found
+                  </Text>
+                );
+              }
+              
+              return eligibleItems.map((item) => (
+                <ItemCard
+                  key={item.id || `item-${Math.random()}`}
+                  item={item}
+                />
+              ));
+            })()
           )}
         </ScrollView>
       </View>

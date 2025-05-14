@@ -11,7 +11,8 @@ from .views import (
     PendingDeliveriesView,
     UpdateDeliveryStatusView,
     InitiateReturnView,
-    AcceptReturnView
+    AcceptReturnView,
+    LatestItemBookingView
 )
 
 urlpatterns = [
@@ -27,4 +28,5 @@ urlpatterns = [
     path('update-delivery-status/<int:booking_id>/', UpdateDeliveryStatusView.as_view(), name='update_delivery_status'),
     path('initiate-return/<int:booking_id>/', InitiateReturnView.as_view(), name='initiate_return'),
     path('accept-return/<int:booking_id>/', AcceptReturnView.as_view(), name='accept_return'),
+    path('item/<int:item_id>/latest/', LatestItemBookingView.as_view(), name='latest_item_booking'),
 ]

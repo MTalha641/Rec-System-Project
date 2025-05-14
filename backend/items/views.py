@@ -5,6 +5,8 @@ from rest_framework.decorators import action
 from .models import Item,SearchHistory, SavedItem
 from .serializers import ItemSerializer,SearchHistorySerializer, SavedItemSerializer
 from django.db.models import Q
+from bookings.models import Booking
+from django.db.models import Exists, OuterRef, Prefetch
 
 
 class ItemViewSet(viewsets.ModelViewSet):
@@ -35,6 +37,54 @@ class ItemViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().exclude(rentee_id=request.user.id)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='myitems')
+    def my_items(self, request):
+        """
+        Handles GET requests to list all items created by the authenticated user
+        with booking information attached.
+        """
+        if not request.user.is_authenticated:
+            raise NotAuthenticated("User must be authenticated.")
+        
+        # Filter items where rentee matches the logged-in user
+        queryset = self.get_queryset().filter(rentee=request.user)
+        
+        # Prefetch related bookings for each item
+        from django.db.models import Prefetch
+        from bookings.models import Booking
+        
+        items_with_bookings = queryset.prefetch_related(
+            Prefetch(
+                'booking_set',
+                queryset=Booking.objects.all().order_by('-created_at'),
+                to_attr='latest_bookings'
+            )
+        )
+        
+        # Debug info
+        print(f"User ID: {request.user.id}")
+        print(f"Found {items_with_bookings.count()} items for user {request.user.username}")
+        
+        # Serialize the items
+        serializer = self.get_serializer(items_with_bookings, many=True)
+        
+        # Enhance the serialized data with booking information
+        data = serializer.data
+        for i, item in enumerate(items_with_bookings):
+            if hasattr(item, 'latest_bookings') and item.latest_bookings:
+                latest_booking = item.latest_bookings[0]  # Get the most recent booking
+                data[i]['latest_booking'] = {
+                    'id': latest_booking.id,
+                    'status': latest_booking.status,
+                    'delivery_status': latest_booking.delivery_status,
+                    'return_status': latest_booking.return_status,
+                    'start_date': latest_booking.start_date,
+                    'end_date': latest_booking.end_date,
+                    'created_at': latest_booking.created_at,
+                }
+        
+        return Response(data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, *args, **kwargs):
         """

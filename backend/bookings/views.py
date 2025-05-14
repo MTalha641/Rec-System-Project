@@ -474,25 +474,67 @@ class InitiateReturnView(APIView):
 
 class AcceptReturnView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request, booking_id):
         try:
             booking = Booking.objects.get(id=booking_id)
         except Booking.DoesNotExist:
             return Response({"message": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Only allow accept if return is pending
+            if booking.return_status != 'pending':
+                return Response({"message": "Return is not pending or already in progress."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Set return_status to 'in_return' and delivery_status to 'in_delivery' to start the return delivery
+            booking.return_status = 'in_return'
+            booking.delivery_status = 'in_delivery'
+            booking.save()
+            
+            return Response({
+                "message": "Return accepted. Return delivery in progress.",
+                "booking_id": booking.id,
+                "delivery_status": booking.delivery_status,
+                "return_status": booking.return_status
+            }, status=status.HTTP_200_OK)
 
-        # Only allow accept if return is pending
-        if booking.return_status != 'pending':
-            return Response({"message": "Return is not pending or already in progress."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Set return_status to 'in_return' and delivery_status to 'in_delivery' to start the return delivery
-        booking.return_status = 'in_return'
-        booking.delivery_status = 'in_delivery'
-        booking.save()
-
-        return Response({
-            "message": "Return accepted. Return delivery in progress.",
-            "booking_id": booking.id,
-            "delivery_status": booking.delivery_status,
-            "return_status": booking.return_status
-        }, status=status.HTTP_200_OK)
+class LatestItemBookingView(APIView):
+    """
+    API endpoint to get the latest booking for a specific item.
+    This is used when filing disputes as an item owner.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, item_id):
+        try:
+            # First verify the item exists and the user is the owner
+            item = Item.objects.get(id=item_id)
+            
+            if item.rentee != request.user:
+                return Response({"message": "You are not the owner of this item."}, status=status.HTTP_403_FORBIDDEN)
+            
+            # Get the latest booking for this item that is either approved or completed
+            latest_booking = Booking.objects.filter(
+                item=item,
+                status__in=['approved', 'completed']
+            ).order_by('-created_at').first()
+            
+            if not latest_booking:
+                return Response({"message": "No bookings found for this item."}, status=status.HTTP_404_NOT_FOUND)
+            
+            booking_data = {
+                "id": latest_booking.id,
+                "user_id": latest_booking.user.id,
+                "user_name": latest_booking.user.username,
+                "start_date": latest_booking.start_date,
+                "end_date": latest_booking.end_date,
+                "status": latest_booking.status,
+                "total_price": latest_booking.total_price,
+                "delivery_status": latest_booking.delivery_status,
+                "return_status": latest_booking.return_status
+            }
+            
+            return Response(booking_data, status=status.HTTP_200_OK)
+            
+        except Item.DoesNotExist:
+            return Response({"message": "Item not found."}, status=status.HTTP_404_NOT_FOUND)

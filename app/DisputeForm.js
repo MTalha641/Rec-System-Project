@@ -7,6 +7,7 @@ import {
   Image,
   Alert,
   StyleSheet,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
@@ -15,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import icons from "../constants/icons";
 import CustomButton from "../components/CustomButton";
 import FormField from "../components/FormField";
-import { ReactNativeModal } from "react-native-modal";
 import logo from "../assets/images/RLogo.png";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -168,26 +168,38 @@ const DisputeForm = () => {
         />
 
         {/* Success Modal */}
-        <ReactNativeModal isVisible={success} onBackdropPress={() => setSuccess(false)}>
-          <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
-            <Image source={logo} className="w-28 h-28 mt-5" />
-            <Text className="text-2xl text-center font-bold mt-5 text-black">
-              {ackMessage || "Dispute Filed successfully."}
-            </Text>
-            <Text className="text-md text-gray-500 text-center mt-3">
-              Thank you for your submission. Our Team will look into your case and will get back to you.
-              Please proceed.
-            </Text>
-            <CustomButton
-              title="Back Home"
-              containerStyles="mt-5 w-full"
-              handlePress={() => {
-                setSuccess(false);
-                router.push("/home");
-              }}
-            />
+        <Modal
+          transparent={true}
+          visible={success}
+          animationType="slide"
+          onRequestClose={() => setSuccess(false)}
+        >
+          <View style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.5)'
+          }}>
+            <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
+              <Image source={logo} className="w-28 h-28 mt-5" />
+              <Text className="text-2xl text-center font-bold mt-5 text-black">
+                {ackMessage || "Dispute Filed successfully."}
+              </Text>
+              <Text className="text-md text-gray-500 text-center mt-3">
+                Thank you for your submission. Our Team will look into your case and will get back to you.
+                Please proceed.
+              </Text>
+              <CustomButton
+                title="Back Home"
+                containerStyles="mt-5 w-full"
+                handlePress={() => {
+                  setSuccess(false);
+                  router.push("/home");
+                }}
+              />
+            </View>
           </View>
-        </ReactNativeModal>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
