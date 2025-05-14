@@ -1,4 +1,4 @@
-import React, { useState} from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,10 @@ import FormField from "../components/FormField";
 import { ReactNativeModal } from "react-native-modal";
 import logo from "../assets/images/RLogo.png";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import { AuthContext } from "./context/AuthContext";
+import { API_URL } from "@env";
+import { useLocalSearchParams } from "expo-router";
 
 const disputeCategories = [
   { name: "Payment Dispute" },
@@ -26,6 +30,11 @@ const disputeCategories = [
 
 const DisputeForm = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { bookingId, itemId } = params;
+  console.log("Booking ID:", bookingId);
+  console.log("Item ID:", itemId);
+  const { token } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     category: "",
@@ -33,8 +42,10 @@ const DisputeForm = () => {
     image: null,
   });
 
+
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [ackMessage, setAckMessage] = useState("");
 
   const openPicker = async () => {
     try {
@@ -58,18 +69,41 @@ const DisputeForm = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.category || !form.description || !form.image) {
       Alert.alert("Missing Fields", "Please complete all fields before submitting.");
       return;
     }
 
-    // Simulate upload (you can replace this with real API call)
     setUploading(true);
-    setTimeout(() => {
+
+    try {
+      const formData = new FormData();
+      formData.append("description", form.description);
+      formData.append("evidence", {
+        uri: form.image.uri,
+        name: form.image.name,
+        type: form.image.type,
+      });
+
+
+      const url = `${API_URL}/api/disputes/create/${bookingId}/${itemId}/`;
+
+      const response = await axios.post(url, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       setUploading(false);
       setSuccess(true);
-    }, 1500);
+      setAckMessage(response.data?.detail || "Dispute filed successfully!");
+    } catch (error) {
+      setUploading(false);
+      const msg = error.response?.data?.detail || "Failed to file dispute." + error;
+      Alert.alert("Error", msg);
+    }
   };
 
   return (
@@ -138,7 +172,7 @@ const DisputeForm = () => {
           <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
             <Image source={logo} className="w-28 h-28 mt-5" />
             <Text className="text-2xl text-center font-bold mt-5 text-black">
-              Dispute Filed successfully.
+              {ackMessage || "Dispute Filed successfully."}
             </Text>
             <Text className="text-md text-gray-500 text-center mt-3">
               Thank you for your submission. Our Team will look into your case and will get back to you.

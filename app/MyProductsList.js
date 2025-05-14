@@ -23,10 +23,9 @@ const MyProductsList = () => {
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { token } = useContext(AuthContext);
-  const [waitingModalVisible, setWaitingModalVisible] = useState(false);
-  const [polling, setPolling] = useState(false);
-  const [pollingError, setPollingError] = useState(null);
+  const [returnInitiatedModalVisible, setReturnInitiatedModalVisible] = useState(false);
   const [currentBookingId, setCurrentBookingId] = useState(null);
+  const [initiateReturnLoading, setInitiateReturnLoading] = useState(false);
 
   // Function to trigger a manual refresh
   const refreshReservations = useCallback(() => {
@@ -50,12 +49,12 @@ const MyProductsList = () => {
 
       console.log("Fetching reservations from:", `${API_URL}/api/bookings/reservations/`);
       const response = await axios.get(
-        `${API_URL}/api/bookings/reservations/`, 
+        `${API_URL}/api/bookings/reservations/`,
         { headers }
       );
-      
+
       console.log("API Response:", response.data);
-      
+
       if (response.data && Array.isArray(response.data)) {
         console.log("Setting reservations:", response.data);
         setReservations(response.data);
@@ -80,13 +79,13 @@ const MyProductsList = () => {
   // Handle cancellation of a reservation
   const handleCancelReservation = useCallback(async (reservationId) => {
     if (!token || !reservationId) return;
-    
+
     try {
       // Optimistic UI update
-      setReservations(prev => 
+      setReservations(prev =>
         prev.filter(item => item.id !== reservationId)
       );
-      
+
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -107,8 +106,7 @@ const MyProductsList = () => {
   const handleInitiateReturn = useCallback(async (bookingId) => {
     if (!token || !bookingId) return;
     setCurrentBookingId(bookingId);
-    setWaitingModalVisible(true);
-    setPollingError(null);
+    setInitiateReturnLoading(true);
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
@@ -120,52 +118,19 @@ const MyProductsList = () => {
         { headers }
       );
       console.log("Return initiated response:", response.data);
-      // Start polling for status
-      setPolling(true);
-      pollReturnStatus(bookingId);
+      setInitiateReturnLoading(false);
+      setReturnInitiatedModalVisible(true);
     } catch (error) {
       console.error("Error initiating return:", error.response?.data || error.message);
-      setWaitingModalVisible(false);
+      setInitiateReturnLoading(false);
       Alert.alert("Error", "Failed to initiate return request.");
     }
   }, [token]);
 
-  // Polling function
-  const pollReturnStatus = useCallback((bookingId) => {
-    let attempts = 0;
-    const maxAttempts = 30; // ~1 min
-    const poll = async () => {
-      if (attempts >= maxAttempts) {
-        setPolling(false);
-        setPollingError("Timeout waiting for rider to accept return.");
-        return;
-      }
-      try {
-        const headers = {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        };
-        const response = await axios.get(
-          `${API_URL}/api/bookings/delivery-details/${bookingId}/`,
-          { headers }
-        );
-        console.log("Polling return status:", response.data.return_status);
-        if (response.data.return_status === 'in_return') {
-          setPolling(false);
-          setWaitingModalVisible(false);
-          setPollingError(null);
-          router.push(`/ReturnMapsScreen?bookingId=${bookingId}`);
-          return;
-        }
-      } catch (error) {
-        console.error("Error polling return status:", error);
-        setPollingError("Error polling return status.");
-      }
-      attempts++;
-      setTimeout(poll, 2000);
-    };
-    poll();
-  }, [token]);
+  const handleProceedToHome = useCallback(() => {
+    setReturnInitiatedModalVisible(false);
+    router.push('/home'); // Assuming '/home' is your home route
+  }, []);
 
   // Debug render - display token status and API details (only in development)
   const renderDebugInfo = useCallback(() => {
@@ -175,7 +140,7 @@ const MyProductsList = () => {
           <Text style={{ color: 'white', fontSize: 12 }}>Token: {token ? "Available" : "Not available"}</Text>
           <Text style={{ color: 'white', fontSize: 12 }}>API URL: {API_URL}/api/bookings/reservations/</Text>
           <Text style={{ color: 'white', fontSize: 12 }}>Reservations count: {reservations.length}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={{ backgroundColor: '#555', padding: 5, borderRadius: 5, marginTop: 5 }}
             onPress={refreshReservations}
           >
@@ -194,9 +159,10 @@ const MyProductsList = () => {
       total_price: item.total_price,
       item_name: item.item_name,
       delivery_status: item.delivery_status,
-      return_status: item.return_status
+      return_status: item.return_status,
+      item_id:item.item_id
     });
-    
+
     return (
       <View
         key={item.id || `reservation-${Math.random()}`}
@@ -226,7 +192,7 @@ const MyProductsList = () => {
               </Text>
             )}
             <Text className="text-xs text-gray-400">
-              Status: {item.delivery_status === 'delivered' ? 'Delivered' : 
+              Status: {item.delivery_status === 'delivered' ? 'Delivered' :
                       item.delivery_status === 'in_delivery' ? 'In Delivery' : 'Pending'}
             </Text>
           </View>
@@ -235,16 +201,24 @@ const MyProductsList = () => {
           <TouchableOpacity
             className="mt-2 bg-orange-500 p-2 rounded-lg"
             onPress={() => handleInitiateReturn(item.id)}
+            disabled={initiateReturnLoading}
           >
-            <Text className="text-white text-center">
-              Initiate Return
-            </Text>
+            {initiateReturnLoading && currentBookingId === item.id ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text className="text-white text-center">
+                Initiate Return
+              </Text>
+            )}
           </TouchableOpacity>
         )}
         {selectedTab === "completed" && (
           <TouchableOpacity
             className="mt-2 bg-red-500 p-2 rounded-lg"
-            onPress={() => router.push('DisputeForm')}
+            onPress={() => router.push({
+              pathname: "DisputeForm",
+              params: { bookingId: item.id, itemId: item.item_id }
+            })}
           >
             <Text className="text-white text-center">
               File Dispute
@@ -308,9 +282,9 @@ const MyProductsList = () => {
             </Text>
           ) : (
             reservations.map((item) => (
-              <ReservationCard 
-                key={item.id || `reservation-${Math.random()}`} 
-                item={item} 
+              <ReservationCard
+                key={item.id || `reservation-${Math.random()}`}
+                item={item}
               />
             ))
           )}
@@ -318,9 +292,9 @@ const MyProductsList = () => {
       </View>
       <Modal
         transparent={true}
-        visible={waitingModalVisible}
+        visible={returnInitiatedModalVisible}
         animationType="slide"
-        onRequestClose={() => setWaitingModalVisible(false)}
+        onRequestClose={() => setReturnInitiatedModalVisible(false)}
       >
         <View style={{
           flex: 1,
@@ -329,23 +303,13 @@ const MyProductsList = () => {
           backgroundColor: 'rgba(0,0,0,0.5)'
         }}>
           <View className="bg-white p-7 rounded-2xl w-[90%] max-w-[400px] items-center">
-            <Text className="text-2xl text-center font-bold mt-5 text-black">Waiting for Rider to Accept Return</Text>
-            <Text className="text-md text-gray-500 text-center mt-3 mb-4">Your return request has been sent. Please wait for the rider/owner to accept the return.</Text>
-            {pollingError && <Text className="text-red-500 text-center mb-2">{pollingError}</Text>}
-            <ActivityIndicator size="large" color="#FFA001" style={{ marginVertical: 10 }} />
+            <Text className="text-2xl text-center font-bold mt-5 text-black">Return Initiated</Text>
+            <Text className="text-md text-gray-500 text-center mt-3 mb-4">A Rider Will pick up the Item from you and deliver it to owner. Please Proceed.</Text>
             <TouchableOpacity
               className="mt-4 bg-blue-500 px-4 py-2 rounded-lg"
-              onPress={() => {
-                if (currentBookingId) pollReturnStatus(currentBookingId);
-              }}
+              onPress={handleProceedToHome}
             >
-              <Text className="text-white text-center">Refresh Status</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="mt-2 bg-gray-400 px-4 py-2 rounded-lg"
-              onPress={() => setWaitingModalVisible(false)}
-            >
-              <Text className="text-black text-center">Cancel</Text>
+              <Text className="text-white text-center">Proceed</Text>
             </TouchableOpacity>
           </View>
         </View>

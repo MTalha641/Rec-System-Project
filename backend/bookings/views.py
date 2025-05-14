@@ -181,10 +181,12 @@ class UserReservationsView(APIView):
             user=request.user,
             status='approved'
         ).order_by('-created_at')
-        
+        print(user_reservations)
+
         # Format the data to include only what's needed
         reservations_data = [{
             "id": booking.id,
+            'item_id':booking.item_id,
             "item_name": booking.item.title,
             "owner_name": booking.item.rentee.username,
             "image_url": booking.item.image.url if booking.item.image else None,
