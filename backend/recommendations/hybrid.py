@@ -1,11 +1,11 @@
-
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from django.utils import timezone
 from users.models import User
 from items.models import Item, SearchHistory
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 # Content-Based Recommendations
 def content_based_recommendations(user_id):
@@ -39,13 +39,18 @@ def content_based_recommendations(user_id):
                 items_data_df['title'] + ' ' + items_data_df['category'] + ' ' + items_data_df['description']
             )
 
-            # Vectorizing the text data
-            vectorizer = TfidfVectorizer()
-            items_tfidf = vectorizer.fit_transform(items_data_df['combined_text'])
-            user_tfidf = vectorizer.transform([user_text])
-
-            # Compute cosine similarity
-            scores = cosine_similarity(user_tfidf, items_tfidf).flatten()
+            # Use sentence embeddings instead of TF-IDF
+            model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Smaller model for efficiency
+            
+            # Generate embeddings for item texts and user text
+            items_embeddings = model.encode(items_data_df['combined_text'].tolist())
+            user_embedding = model.encode([user_text])[0]  # Get the first item since it returns a 2D array
+            
+            # Reshape user embedding for cosine similarity
+            user_embedding_reshaped = user_embedding.reshape(1, -1)
+            
+            # Compute cosine similarity between user embedding and all item embeddings
+            scores = cosine_similarity(user_embedding_reshaped, items_embeddings).flatten()
             items_data_df['similarity'] = scores
 
             # Calculate recency score for each item

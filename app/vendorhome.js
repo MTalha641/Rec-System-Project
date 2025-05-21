@@ -69,12 +69,14 @@ const VendorHome = () => {
               <Text className="text-white font-pbold text-lg">Manage Ride Requests</Text>
             </TouchableOpacity>
 
+            {/* Commented out Ride History button
             <TouchableOpacity
               className="bg-green-500 rounded-xl p-5 items-center"
               onPress={() => router.push("/RideHistory")}
             >
               <Text className="text-white font-pbold text-lg">Ride History</Text>
             </TouchableOpacity>
+            */}
 
             <TouchableOpacity
               className="bg-yellow-500 rounded-xl p-5 items-center"

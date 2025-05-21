@@ -51,8 +51,8 @@ const ReturnMapsScreen = () => {
   // Handle back button press
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Navigate directly to vendorhome instead of going back
-      router.replace("/vendorhome");
+      // Navigate directly to home instead of going back
+      router.replace("/home");
       return true; // Prevent default behavior
     });
 
@@ -130,7 +130,8 @@ const ReturnMapsScreen = () => {
   useEffect(() => {
     const fetchRoute = async () => {
       if (!userLocation || !origin) return;
-      const url = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${userLocation.longitude},${userLocation.latitude}?overview=full&geometries=geojson`;
+      // For return ride, swap the origin and destination since we're going from user to owner
+      const url = `https://router.project-osrm.org/route/v1/driving/${userLocation.longitude},${userLocation.latitude};${origin.longitude},${origin.latitude}?overview=full&geometries=geojson`;
       try {
         const res = await fetch(url);
         const data = await res.json();
@@ -141,12 +142,12 @@ const ReturnMapsScreen = () => {
           setRoute(coordinates);
         } else {
           // Fallback to generated route
-          generateFallbackRoute(origin, userLocation);
+          generateFallbackRoute(userLocation, origin);
         }
       } catch (err) {
         console.error("Failed to fetch route:", err);
         // Fallback to generated route
-        generateFallbackRoute(origin, userLocation);
+        generateFallbackRoute(userLocation, origin);
       }
     };
     fetchRoute();
@@ -177,9 +178,11 @@ const ReturnMapsScreen = () => {
     if (route.length >= 2 && !success && bookingDetails?.return_status === 'in_return') {
       latestIndexRef.current = 0;
       
-      // Initialize animated values
-      animatedLatitude.setValue(route[0].latitude);
-      animatedLongitude.setValue(route[0].longitude);
+      // Initialize animated values from user location (first point in route)
+      if (route[0]) {
+        animatedLatitude.setValue(route[0].latitude);
+        animatedLongitude.setValue(route[0].longitude);
+      }
       
       animateStep(0);
     }
@@ -244,7 +247,7 @@ const ReturnMapsScreen = () => {
       <View className="flex-1 justify-center items-center bg-primary p-4">
         <Text className="text-red-500 text-center text-lg">Error</Text>
         <Text className="text-white text-center mt-2">{error}</Text>
-        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/vendorhome")} containerStyles="mt-4" />
+        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/home")} containerStyles="mt-4" />
       </View>
     );
   }
@@ -281,7 +284,7 @@ const ReturnMapsScreen = () => {
         />
         <CustomButton 
           title="Go Back to Home" 
-          handlePress={() => router.replace("/vendorhome")} 
+          handlePress={() => router.replace("/home")} 
           containerStyles="mt-2" 
         />
       </View>
@@ -294,7 +297,7 @@ const ReturnMapsScreen = () => {
       <View className="flex-1 justify-center items-center bg-primary p-4">
         <Text className="text-white text-xl text-center">Return Not In Progress</Text>
         <Text className="text-white text-center mt-2">The return process has not started yet.</Text>
-        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/vendorhome")} containerStyles="mt-4" />
+        <CustomButton title="Go Back to Home" handlePress={() => router.replace("/home")} containerStyles="mt-4" />
       </View>
     );
   }
@@ -309,10 +312,15 @@ const ReturnMapsScreen = () => {
           <MapView
             style={{ width: "100%", height: 300, borderRadius: 20 }}
             region={{
-              latitude: origin?.latitude || 25.0700,
-              longitude: origin?.longitude || 67.2840,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
+              // Center the map between user and origin for better view of the route
+              latitude: userLocation ? 
+                (userLocation.latitude + (origin?.latitude || 0)) / 2 : 
+                (origin?.latitude || 25.0700),
+              longitude: userLocation ? 
+                (userLocation.longitude + (origin?.longitude || 0)) / 2 : 
+                (origin?.longitude || 67.2840),
+              latitudeDelta: 0.1, // Increase zoom out to see both points
+              longitudeDelta: 0.1,
             }}
           >
             {origin && <Marker coordinate={origin} title="Owner Location" pinColor="green" />}
@@ -408,7 +416,7 @@ const ReturnMapsScreen = () => {
           <CustomButton
             title="Cancel and Go Back to Home"
             containerStyles="mt-2 w-full bg-gray-600"
-            handlePress={() => router.replace("/vendorhome")}
+            handlePress={() => router.replace("/home")}
           />
         </View>
       </ScrollView>

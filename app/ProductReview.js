@@ -11,15 +11,15 @@ import {
 import React, { useState, useContext } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ReactNativeModal from "react-native-modal";
+import Modal from "react-native-modal";
 import CustomButton from "../components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
 import logo from "../assets/images/RLogo.png";
-import { useNavigation, useRoute } from "@react-navigation/native";
 import AuthContext from "./context/AuthContext";
 import { API_URL } from "@env";
 import axios from "axios";
 import { useLocalSearchParams } from "expo-router";
+
 const ProductReview = () => {
   // const [name, setName] = useState(""); // Commented out
   const [rating, setRating] = useState(0);
@@ -28,8 +28,6 @@ const ProductReview = () => {
   const [error, setError] = useState("");
   const { token } = useContext(AuthContext);
   const router = useRouter();
-  const navigation = useNavigation();
- 
 
 const { productId } = useLocalSearchParams();
 
@@ -61,21 +59,18 @@ const { productId } = useLocalSearchParams();
       );
 
       Alert.alert("Success", "Review added successfully!");
-      navigation.goBack();
+      setError("");
+      setSuccess(true);
     } catch (error) {
       console.error("Error submitting review:", error.response?.data || error.message);
       setError(error.response?.data?.message || "Failed to submit review. Please try again.");
     }
-
-    setError("");
-    setSuccess(true);
-    setTimeout(() => router.push("/home"), 2000);
   };
 
   return (
     <SafeAreaView className="bg-primary h-full">
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Product Review</Text>
@@ -135,7 +130,7 @@ const { productId } = useLocalSearchParams();
         />
       </ScrollView>
 
-      <ReactNativeModal
+      <Modal
         isVisible={success}
         onBackdropPress={() => {
           setSuccess(false);
@@ -159,7 +154,7 @@ const { productId } = useLocalSearchParams();
             }}
           />
         </View>
-      </ReactNativeModal>
+      </Modal>
     </SafeAreaView>
   );
 };
