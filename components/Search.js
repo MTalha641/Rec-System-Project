@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { API_URL } from "@env";
-import { AuthContext } from "../app/context/AuthContext";
+import { AuthContext } from "../context/AuthContext";
 
 import icon1 from "../assets/icons/search.png";
 import ProductCard from "../components/ProductCard"; // Import ProductCard component

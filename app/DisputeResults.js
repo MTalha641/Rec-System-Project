@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import logo from "../assets/images/RLogo.png";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 import axios from "axios";
 import { API_URL } from "@env";
 

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import React, { useEffect } from "react";
 import { Slot, SplashScreen, Stack } from "expo-router";
 import { useFonts } from "expo-font";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "../context/AuthContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { STRIPE_PUBLISHABLE_KEY } from "@env";
 
@@ -48,14 +48,13 @@ const RootLayout = () => {
     <StripeProvider
       publishableKey={STRIPE_PUBLISHABLE_KEY || ""} // Provide key, default to empty string if missing to avoid crash
       // merchantIdentifier="merchant.com.your-app-name" // Optional: Add if using Apple Pay
-    >
+      >
       <AuthProvider>
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="search/[query]" options={{ headerShown: false }}/>
-          {/* <Stack.Screen name="ProductDetails/[id]" options={{ headerShown: false }} /> */}
           <Stack.Screen name="ReserveProduct" options={{ headerShown: false }}/>
           <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="Paymentgateway" options={{ headerShown: false }}/>

@@ -10,7 +10,7 @@ import { API_URL } from '@env';
 import { icons } from "../../constants";
 import CustomButton from "../../components/CustomButton";
 import FormField from "../../components/FormField";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../../context/AuthContext";
 
 // ... categories array remains the same ...
 const categories = [

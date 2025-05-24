@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import React, { useContext } from "react";
 import { SafeAreaView } from "react-native-safe-area-context"; // Import from react-native-safe-area-context
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../../context/AuthContext";
 import Furniture from "../../assets/icons/living-room.png";
 import CustomButton from "../../components/CustomButton";
 import avatarSource1 from "../../assets/icons/profile.png";

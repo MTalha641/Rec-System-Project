@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import axios from "axios";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 import racquet from "../assets/images/racquet.jpg";
 // import dummyImage1 from "../assets/images/racquet.jpg";
 // import dummyImage2 from "../assets/images/racquet.jpg";

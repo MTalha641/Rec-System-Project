@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import logo from "../assets/images/RLogo.png";
 import { Bell } from "lucide-react-native";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 
 const VendorHome = () => {
   const { user, logout } = useContext(AuthContext);

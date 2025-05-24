@@ -4,7 +4,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, TouchableOpacity, Activi
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect, useContext, useCallback } from "react";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 import axios from "axios";
 import { API_URL } from "@env";
 

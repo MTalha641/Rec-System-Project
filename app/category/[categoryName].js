@@ -15,7 +15,7 @@ import {
   import axios from "axios";
   import { API_URL } from "@env";
   import { SafeAreaView } from "react-native-safe-area-context";
-  import { AuthContext } from "../context/AuthContext";
+  import { AuthContext } from "../../context/AuthContext";
   import { ChevronLeft, Plus } from 'lucide-react-native';
   
   import ProductCard from '../../components/ProductCard';

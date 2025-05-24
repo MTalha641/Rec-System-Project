@@ -3,7 +3,7 @@ import { FlatList, Text, View, StyleSheet } from "react-native";
 import Ratings from "./Ratings";
 import axios from "axios";
 import { API_URL } from "@env";
-import { AuthContext } from "../app/context/AuthContext";
+import { AuthContext } from "../context/AuthContext";
 
 const Reviews = ({ id }) => {
   const { token } = useContext(AuthContext);// Get token from context

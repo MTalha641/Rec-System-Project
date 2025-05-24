@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import axios from 'axios';
 import { API_URL } from "@env";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 
 const MyProductsList = () => {
   const [selectedTab, setSelectedTab] = useState("reservation");

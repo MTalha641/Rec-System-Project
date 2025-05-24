@@ -19,7 +19,7 @@ import FormField from "../components/FormField";
 import logo from "../assets/images/RLogo.png";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { AuthContext } from "./context/AuthContext";
+import { AuthContext } from "./../context/AuthContext";
 import { API_URL } from "@env";
 import { useLocalSearchParams } from "expo-router";
 

@@ -17,14 +17,33 @@ import moment from "moment";
 import logo from "../assets/images/RLogo.png";
 import axios from "axios";
 import { API_URL } from "@env";
-import { AuthContext } from "./context/AuthContext";
+import { AuthContext } from "./../context/AuthContext";
 
 const Notifications = () => {
-  const { token } = useContext(AuthContext);
+  const { getValidToken, isAuthenticated, initialized } = useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [token, setToken] = useState(null);
+
+  // Initialize token
+  useEffect(() => {
+    const initializeToken = async () => {
+      try {
+        const validToken = await getValidToken();
+        setToken(validToken);
+      } catch (error) {
+        console.error("Error getting token:", error);
+        setError("Authentication error. Please try logging in again.");
+        setLoading(false);
+      }
+    };
+
+    if (initialized) {
+      initializeToken();
+    }
+  }, [getValidToken, initialized]);
 
   const fetchNotifications = async () => {
     if (!token) {
@@ -58,8 +77,11 @@ const Notifications = () => {
     }
   };
 
+  // Fetch notifications when token is available
   useEffect(() => {
-    fetchNotifications();
+    if (token) {
+      fetchNotifications();
+    }
   }, [token]);
 
   const onRefresh = () => {
@@ -68,6 +90,8 @@ const Notifications = () => {
   };
 
   const markAsRead = async (notificationId) => {
+    if (!token) return;
+
     try {
       await axios.post(
         `${API_URL}/api/notifications/${notificationId}/mark-read/`,
@@ -89,6 +113,32 @@ const Notifications = () => {
       );
     } catch (error) {
       console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    if (!token) return;
+
+    try {
+      await axios.post(
+        `${API_URL}/api/notifications/mark-all-read/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      // Update all notifications to read in local state
+      setNotifications(
+        notifications.map(n => ({...n, is_read: true}))
+      );
+      
+      Alert.alert("Success", "All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      Alert.alert("Error", "Failed to mark all as read");
     }
   };
 
@@ -169,6 +219,18 @@ const Notifications = () => {
     </TouchableOpacity>
   );
 
+  // Show loading while initializing
+  if (!initialized) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.loadingText}>Initializing...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -180,29 +242,7 @@ const Notifications = () => {
         {notifications.some(n => !n.is_read) && (
           <TouchableOpacity 
             style={styles.markAllReadButton}
-            onPress={async () => {
-              try {
-                await axios.post(
-                  `${API_URL}/api/notifications/mark-all-read/`,
-                  {},
-                  {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
-                  }
-                );
-                
-                // Update all notifications to read in local state
-                setNotifications(
-                  notifications.map(n => ({...n, is_read: true}))
-                );
-                
-                Alert.alert("Success", "All notifications marked as read");
-              } catch (error) {
-                console.error("Error marking all as read:", error);
-                Alert.alert("Error", "Failed to mark all as read");
-              }
-            }}
+            onPress={markAllAsRead}
           >
             <Text style={styles.markAllReadText}>Mark all read</Text>
           </TouchableOpacity>
@@ -216,6 +256,16 @@ const Notifications = () => {
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              setLoading(true);
+              fetchNotifications();
+            }}
+          >
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
@@ -263,6 +313,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingText: {
+    color: "#FFFFFF",
+    marginTop: 10,
+    fontSize: 16,
+  },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
@@ -273,6 +328,18 @@ const styles = StyleSheet.create({
     color: "#FF6B6B",
     fontSize: 16,
     textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#475FCB",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   card: {
     flexDirection: "row",
