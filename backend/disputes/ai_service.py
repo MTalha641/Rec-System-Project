@@ -101,6 +101,44 @@ def detect_damage_keywords(text):
     
     return found_keywords
 
+def calculate_confidence_score(similarity_score, context_difference, new_damage, sentiment_scores):
+    """
+    Calculate confidence score for AI prediction based on multiple factors
+    Returns score between 0 and 1
+    """
+    confidence_factors = []
+    
+    # Factor 1: Similarity confidence
+    if similarity_score > 0.8 or similarity_score < 0.3:
+        confidence_factors.append(0.9)  # High confidence when very similar or very different
+    else:
+        confidence_factors.append(0.5)  # Medium confidence for borderline cases
+    
+    # Factor 2: Context difference confidence
+    if context_difference > 0.6 or context_difference < 0.2:
+        confidence_factors.append(0.8)  # High confidence for clear context changes
+    else:
+        confidence_factors.append(0.4)  # Lower confidence for ambiguous context
+    
+    # Factor 3: Damage keywords confidence
+    if len(new_damage) > 2:
+        confidence_factors.append(0.9)  # High confidence with multiple damage indicators
+    elif len(new_damage) == 1:
+        confidence_factors.append(0.6)  # Medium confidence with single damage indicator
+    else:
+        confidence_factors.append(0.7)  # Good confidence when no damage found
+    
+    # Factor 4: Sentiment confidence
+    sentiment_change = abs(sentiment_scores['return'] - sentiment_scores['checkout'])
+    if sentiment_change > 0.5:
+        confidence_factors.append(0.8)  # High confidence for strong sentiment change
+    else:
+        confidence_factors.append(0.5)  # Medium confidence for small sentiment change
+    
+    # Calculate weighted average confidence
+    confidence = sum(confidence_factors) / len(confidence_factors)
+    return min(max(confidence, 0.0), 1.0)  # Ensure between 0 and 1
+
 def analyze_dispute(checkout_report, return_report, dispute_description):
     """Analyze dispute between checkout and return reports with contextual, semantic, and sentiment analysis."""
     
@@ -126,57 +164,77 @@ def analyze_dispute(checkout_report, return_report, dispute_description):
     context_difference = contextual_difference_score(checkout_text, return_text)
     # (example: 0 = very similar context, 1 = very different context)
 
-    # ✨ Decision Logic
-    if similarity_score > 0.8 and not new_damage and context_difference < 0.3:
-        # Reports very similar and no major context change
-        outcome = 'invalid'
-        at_fault = 'none'
-        analysis = (
-            f"The checkout and return reports are highly similar (similarity: {similarity_score:.2f}), "
-            f"and context remains consistent (context difference: {context_difference:.2f}). "
-            "No significant damage indicators found. Dispute appears invalid."
-        )
-    elif new_damage or return_sentiment < -0.3 or context_difference > 0.5:
-        # New damage detected or negative sentiment or major context change
-        outcome = 'valid'
-        at_fault = 'renter'
-        reasons = []
-        if new_damage:
-            reasons.append(f"new damage keywords detected ({', '.join(new_damage)})")
-        if return_sentiment < -0.3:
-            reasons.append(f"negative return sentiment ({return_sentiment:.2f})")
-        if context_difference > 0.5:
-            reasons.append(f"significant context shift ({context_difference:.2f})")
-        analysis = " and ".join(reasons) + ". Dispute appears valid."
-    elif dispute_sentiment < -0.3:
-        # Even if reports are unclear, owner's complaint is strongly negative
-        outcome = 'valid'
-        at_fault = 'renter'
-        analysis = (
-            f"The dispute description shows strongly negative sentiment "
-            f"(sentiment: {dispute_sentiment:.2f}), supporting owner's claim."
-        )
-    else:
-        # Default: no clear evidence
-        outcome = 'invalid'
-        at_fault = 'none'
-        analysis = (
-            f"No clear damage or context issues found. Report similarity: {similarity_score:.2f}, "
-            f"context difference: {context_difference:.2f}, checkout sentiment: {checkout_sentiment:.2f}, "
-            f"return sentiment: {return_sentiment:.2f}, dispute sentiment: {dispute_sentiment:.2f}. "
-            "Dispute appears invalid."
-        )
+    # ✨ Decision Logic with enhanced reasoning
+    outcome = 'none'
+    at_fault = 'none'
+    analysis = ""
+    reasoning_factors = []
 
-    # ✨ Final structured response
+    # Enhanced decision logic with scoring
+    damage_score = len(new_damage) * 0.3  # Each new damage keyword adds 0.3
+    sentiment_score = max(0, checkout_sentiment - return_sentiment) * 0.5  # Sentiment deterioration
+    context_score = context_difference * 0.4  # Context change weight
+    similarity_penalty = max(0, 0.8 - similarity_score) * 0.6  # Penalty for low similarity
+    
+    total_score = damage_score + sentiment_score + context_score + similarity_penalty
+    
+    # Decision thresholds
+    if total_score > 0.6:  # Strong evidence of damage
+        outcome = 'valid'
+        at_fault = 'renter'
+        reasoning_factors.append(f"High damage evidence score: {total_score:.2f}")
+    elif total_score > 0.3:  # Moderate evidence
+        if dispute_sentiment < -0.4:  # Strong negative complaint
+            outcome = 'valid'
+            at_fault = 'renter'
+            reasoning_factors.append(f"Moderate evidence ({total_score:.2f}) + strong negative complaint")
+        else:
+            outcome = 'invalid'
+            at_fault = 'none'
+            reasoning_factors.append(f"Moderate evidence ({total_score:.2f}) but weak complaint")
+    else:  # Low evidence
+        outcome = 'invalid'
+        at_fault = 'none'
+        reasoning_factors.append(f"Low damage evidence score: {total_score:.2f}")
+    
+    # Add specific evidence to reasoning
+    if new_damage:
+        reasoning_factors.append(f"New damage keywords: {', '.join(new_damage)}")
+    if context_difference > 0.5:
+        reasoning_factors.append(f"Significant context change: {context_difference:.2f}")
+    if return_sentiment < -0.3:
+        reasoning_factors.append(f"Negative return sentiment: {return_sentiment:.2f}")
+    if similarity_score < 0.5:
+        reasoning_factors.append(f"Low report similarity: {similarity_score:.2f}")
+    
+    analysis = "; ".join(reasoning_factors)
+    
+    # Calculate confidence score
+    sentiment_scores = {
+        'checkout': checkout_sentiment,
+        'return': return_sentiment,
+        'dispute': dispute_sentiment
+    }
+    confidence_score = calculate_confidence_score(
+        similarity_score, context_difference, new_damage, sentiment_scores
+    )
+
+    # ✨ Final structured response with enhanced metrics
     return {
         'analysis': analysis,
         'outcome': outcome,
         'at_fault': at_fault,
+        'confidence_score': confidence_score,
+        'total_evidence_score': total_score,
         'similarity_score': similarity_score,
         'context_difference': context_difference,
         'checkout_sentiment': checkout_sentiment,
         'return_sentiment': return_sentiment,
         'dispute_sentiment': dispute_sentiment,
         'new_damage_keywords': new_damage,
+        'damage_score': damage_score,
+        'sentiment_score': sentiment_score,
+        'context_score': context_score,
+        'similarity_penalty': similarity_penalty,
     }
 

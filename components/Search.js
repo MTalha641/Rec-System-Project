@@ -1,117 +1,138 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
-  Image,
   TextInput,
   FlatList,
+  StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { API_URL } from "@env";
-import { AuthContext } from "../app/context/AuthContext";
-
-import icon1 from "../assets/icons/search.png";
-import ProductCard from "../components/ProductCard"; // Import ProductCard component
+import { AuthContext } from "../context/AuthContext";
+import ProductCard from "./ProductCard";
 
 const Search = () => {
-  const { token } = useContext(AuthContext); // Access the token from AuthContext
-  const [query, setQuery] = useState(""); // Track the search query
-  const [results, setResults] = useState([]); // Store search results
-  const [loading, setLoading] = useState(false); // Show loading state
-  const [debouncedQuery, setDebouncedQuery] = useState(""); // Debounced search query
+  const { token } = useContext(AuthContext);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  // Debounce logic: Updates `debouncedQuery` after 500ms of no input
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
-    }, 250); // Adjust debounce time as needed
+    }, 250);
 
     return () => {
-      clearTimeout(handler); // Cleanup timeout on input change
+      clearTimeout(handler);
     };
   }, [query]);
 
-  // Fetch search results when `debouncedQuery` changes
   useEffect(() => {
     const fetchResults = async () => {
-      if (debouncedQuery.trim().length < 2) {
+      if (!debouncedQuery.trim()) {
         setResults([]);
         return;
       }
 
+      setLoading(true);
       try {
-        setLoading(true);
-
         const response = await axios.get(
-          `${API_URL}/api/items/search?q=${debouncedQuery}`,
+          `${API_URL}/api/items/search/?query=${encodeURIComponent(
+            debouncedQuery
+          )}`,
           {
             headers: {
-              Authorization: `Bearer ${token}`, // Pass token in headers
+              Authorization: `Bearer ${token}`,
             },
           }
         );
 
-        if (response.data.search_results) {
-          // Process the image URLs
-          const processedResults = response.data.search_results.map((item) => ({
-            ...item,
-            image: item.image ? `${API_URL}/${item.image}`.replace(/\/\/+/g, "/") : null,
-          }));
+        const processedResults = response.data.map((item) => ({
+          ...item,
+          image: item.image
+            ? `${API_URL}${item.image}`
+            : "https://via.placeholder.com/150",
+        }));
 
-          setResults(processedResults);
-        }
+        setResults(processedResults);
       } catch (error) {
-        console.error("Error fetching search results:", error.response?.data || error.message);
+        console.error("Error searching items:", error);
+        setResults([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchResults();
-  }, [debouncedQuery]);
-
-  const renderResultItem = ({ item }) => (
-    <View className="p-4 bg-black-200 mb-2 rounded-lg">
-      <ProductCard product={item} /> {/* Render ProductCard component */}
-    </View>
-  );
+  }, [debouncedQuery, token]);
 
   return (
-    <View className="py-3">
-      {/* Search Input */}
-      <View className="w-full h-16 bg-black-200 rounded-xl flex-row items-center px-4">
+    <View style={styles.container}>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
-          className="flex-1 text-white font-pregular"
-          style={{ opacity: 0.9 }}
-          placeholder="Search for an Item"
-          placeholderTextColor="rgba(255, 255, 255, 0.6)"
+          style={styles.searchInput}
+          placeholder="Search items..."
           value={query}
           onChangeText={setQuery}
+          autoCapitalize="none"
         />
-        <Image source={icon1} className="w-5 h-5 ml-2" resizeMode="contain" />
       </View>
 
-      {/* Search Results */}
       {loading ? (
-        <ActivityIndicator size="large" color="#FFFFFF" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
       ) : (
         <FlatList
           data={results}
+          renderItem={({ item }) => <ProductCard product={item} />}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderResultItem}
-          contentContainerStyle={{ marginTop: 20 }}
+          contentContainerStyle={styles.resultsContainer}
+          ListEmptyComponent={
+            query ? (
+              <Text style={styles.noResults}>No results found</Text>
+            ) : null
+          }
         />
-      )}
-
-      {/* Display "No results found" only after typing a query */}
-      {!loading && query.trim().length > 0 && results.length === 0 && (
-        <Text className="text-white mt-4 text-center">
-          No results found.
-        </Text>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    margin: 10,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  resultsContainer: {
+    padding: 10,
+  },
+  loader: {
+    marginTop: 20,
+  },
+  noResults: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#666",
+  },
+});
 
 export default Search;

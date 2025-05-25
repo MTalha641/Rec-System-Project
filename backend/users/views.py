@@ -1,91 +1,186 @@
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User
-from .serializers import UserSerializer, LoginSerializer
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.contrib.auth import get_user_model
+from .serializers import UserSerializer, LoginSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from rest_framework.views import APIView
+from utils.otp import generate_otp_secret, generate_totp, verify_totp, send_otp_email
+from django.utils import timezone
+from datetime import timedelta
 
-class SignUpView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+User = get_user_model()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+class RegisterView(APIView):
+    permission_classes = [AllowAny]  # Allow unauthenticated access
+    
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            
+            # New users need OTP verification (existing users have bypass_otp=True by default)
+            user.bypass_otp = False
+            user.email_verified = False
+            user.save()
+            
+            # Generate and send OTP for new users
+            user.otp_secret = generate_otp_secret()
+            otp = generate_totp(user.otp_secret)
+            user.otp_created_at = timezone.now()
+            user.save()
+            
+            # Try to send OTP email
+            email_sent = send_otp_email(user.email, otp)
+            
+            return Response({
+                "message": "Registration successful. Please verify your email with the OTP sent.",
+                "user_id": user.id,
+                "email": user.email,
+                "requires_otp": True,
+                "otp": otp if not email_sent else None,  # Include OTP in response if email failed
+            }, status=status.HTTP_201_CREATED)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate tokens for the user
-        refresh = RefreshToken.for_user(user)
+class LoginView(APIView):
+    permission_classes = [AllowAny]  # Allow unauthenticated access
+    
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+            user = authenticate(email=email, password=password)
+            
+            if user:
+                # Check if user can bypass OTP (existing users) or is already verified
+                if user.bypass_otp or user.email_verified:
+                    refresh = RefreshToken.for_user(user)
+                    return Response({
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
+                        "user": {
+                            "id": user.id,
+                            "email": user.email,
+                            "username": user.username,
+                            "user_type": user.userType,
+                            "interests": user.interests,
+                        }
+                    })
+                else:
+                    # User needs to verify OTP first
+                    return Response({
+                        "message": "Please verify your email with OTP before logging in.",
+                        "user_id": user.id,
+                        "email": user.email,
+                        "requires_otp": True
+                    }, status=status.HTTP_403_FORBIDDEN)
+                    
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Return user data and tokens
-        return Response({
-            "message": "User created successfully",
-            "username": user.username,
-            "email": user.email,
-            "userType": user.userType,  # Include user_type in the response
-            "interests": user.interests,  # Include interests in the response
-            "refresh": str(refresh),
-            "access": str(refresh.access_token)
-        }, status=status.HTTP_201_CREATED)
-
-
-class LoginView(generics.GenericAPIView):
-    serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        email = request.data.get('email')  
-        password = request.data.get('password')  
-
+# OTP ENDPOINTS
+class SendOTPView(APIView):
+    permission_classes = [AllowAny]  # Allow unauthenticated access
+    
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-          
-            user = User.objects.get(email=email) 
-           
-            if user.check_password(password):
-                # Generate JWT tokens
-                refresh = RefreshToken.for_user(user)
+            # Use filter().first() to handle potential duplicates, get the most recent user
+            user = User.objects.filter(email=email).order_by('-date_joined').first()
+            
+            if not user:
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Generate new OTP
+            if not user.otp_secret:
+                user.otp_secret = generate_otp_secret()
+            
+            otp = generate_totp(user.otp_secret)
+            user.otp_created_at = timezone.now()
+            user.save()
+            
+            # Send OTP email
+            email_sent = send_otp_email(user.email, otp)
+            
+            if email_sent:
+                return Response({"message": "OTP sent successfully", "otp": otp}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Failed to send OTP email", "otp": otp}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                # Return tokens and user information
+class VerifyOTPView(APIView):
+    permission_classes = [AllowAny]  # Allow unauthenticated access
+    
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        
+        if not email or not otp:
+            return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Use filter().first() to handle potential duplicates, get the most recent user
+            user = User.objects.filter(email=email).order_by('-date_joined').first()
+            
+            if not user:
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Check if OTP is expired (5 minutes)
+            if user.otp_created_at and timezone.now() - user.otp_created_at > timedelta(minutes=5):
+                return Response({"error": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify OTP
+            if verify_totp(user.otp_secret, otp):
+                user.email_verified = True
+                user.otp_secret = None  # Clear OTP secret after verification
+                user.otp_created_at = None
+                user.save()
+                
+                # Generate tokens for login after verification
+                refresh = RefreshToken.for_user(user)
                 return Response({
-                    "message": "Login successful",
-                    "username": user.username,
+                    "message": "Email verified successfully",
                     "refresh": str(refresh),
                     "access": str(refresh.access_token),
-                    "user_type": user.userType,  # Include user type in the response
-                    "email": user.email
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "username": user.username,
+                        "user_type": user.userType,
+                        "interests": user.interests,
+                    }
                 }, status=status.HTTP_200_OK)
             else:
-                return Response({
-                    "error": "Invalid credentials"
-                }, status=status.HTTP_400_BAD_REQUEST)
-        except User.DoesNotExist:
-            return Response({
-                "error": "Invalid credentials"
-            }, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Getting user details
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])  # Ensure the user is authenticated
+@permission_classes([IsAuthenticated])
 def get_user_details(request):
     try:
-        user = request.user  # Get the currently logged-in user
-        print("User object:", user)  # Debug print
-        print("User ID:", user.id)   # Debug print
-        print("User PK:", user.pk)   # Debug print
+        user = request.user
+        print("User object:", user)
+        print("User ID:", user.id)
+        print("User PK:", user.pk)
         
-        serializer = UserSerializer(user)  # Serialize the user data
-        print("Serialized data:", serializer.data)  # Debug print
+        serializer = UserSerializer(user)
+        print("Serialized data:", serializer.data)
         
-        return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "userType": user.userType,
-            "interests": user.interests,
-            "full_name": user.get_full_name() or user.username,
-        })
+        return Response(serializer.data)
     except Exception as e:
-        print("Error in get_user_details:", str(e))  # Debug print
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        print("Error in get_user_details:", str(e))
+        return Response(
+            {"error": "Failed to fetch user details"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt',
     'disputes',
-    'condition_reports'
+    'condition_reports',
+    'utils'
 ]
 
 # REST Framework settings
@@ -138,3 +139,15 @@ SIMPLE_JWT = {
 
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
+
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# OTP Configuration
+OTP_EXPIRE_TIME = 300  # 5 minutes in seconds

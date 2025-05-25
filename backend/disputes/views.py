@@ -11,6 +11,7 @@ from users.models import User
 from .ai_service import analyze_dispute
 from bookings.models import Booking
 from condition_reports.models import ItemConditionReport
+from django.utils import timezone
 
 class DisputeListView(generics.ListAPIView):
     serializer_class = DisputeSerializer
@@ -84,9 +85,20 @@ class CreateDisputeView(generics.CreateAPIView):
 
         # Update dispute with AI analysis results
         dispute.ai_analysis = result.get('analysis', '')
-        dispute.outcome = result.get('outcome', 'none')
-        dispute.at_fault = result.get('at_fault', 'none')
-        dispute.status = 'resolved' if dispute.outcome == 'valid' else 'pending'
+        dispute.ai_outcome = result.get('outcome', 'none')
+        dispute.ai_at_fault = result.get('at_fault', 'none')
+        dispute.ai_confidence_score = result.get('confidence_score', 0.0)
+        
+        # Set legacy fields for backward compatibility
+        dispute.outcome = dispute.ai_outcome
+        dispute.at_fault = dispute.ai_at_fault
+        
+        # Auto-resolve high-confidence cases
+        if dispute.ai_confidence_score > 0.8:
+            dispute.status = 'resolved'
+        else:
+            dispute.status = 'pending'  # Requires admin review
+            
         dispute.save()
 
 class ResolveDisputeView(generics.UpdateAPIView):
@@ -98,10 +110,23 @@ class ResolveDisputeView(generics.UpdateAPIView):
     
     def perform_update(self, serializer):
         dispute = serializer.instance
-        serializer.save(status='resolved')
+        
+        # Save admin decision as ground truth
+        dispute.admin_outcome = serializer.validated_data.get('outcome', dispute.ai_outcome)
+        dispute.admin_at_fault = serializer.validated_data.get('at_fault', dispute.ai_at_fault)
+        dispute.admin_reviewed = True
+        dispute.admin_reviewed_by = self.request.user
+        dispute.admin_reviewed_at = timezone.now()
+        dispute.status = 'resolved'
+        
+        # Update legacy fields
+        dispute.outcome = dispute.admin_outcome
+        dispute.at_fault = dispute.admin_at_fault
+        
+        dispute.save()
         
         # If renter is at fault, increment fault count
-        if serializer.validated_data.get('at_fault') == 'renter':
+        if dispute.admin_at_fault == 'renter':
             renter = dispute.rental.renter
             renter.increment_fault()
             renter.save()
@@ -117,3 +142,46 @@ class UserDisputesView(generics.ListAPIView):
             return Dispute.objects.filter(rental__product__owner=user)
         else:
             return Dispute.objects.filter(rental__rentee=user)
+
+# New view for metrics calculation
+class DisputeMetricsView(APIView):
+    """View for calculating and displaying AI metrics"""
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request):
+        from .metrics import DisputeMetricsCalculator
+        
+        # Get query parameters
+        days_back = request.query_params.get('days_back')
+        if days_back:
+            try:
+                days_back = int(days_back)
+            except ValueError:
+                days_back = None
+        
+        calculator = DisputeMetricsCalculator()
+        metrics = calculator.calculate_comprehensive_metrics(days_back)
+        
+        return Response(metrics)
+
+class ExportMetricsView(APIView):
+    """View for exporting metrics report"""
+    permission_classes = [permissions.IsAdminUser]
+    
+    def post(self, request):
+        from .metrics import DisputeMetricsCalculator
+        
+        days_back = request.data.get('days_back')
+        if days_back:
+            try:
+                days_back = int(days_back)
+            except ValueError:
+                days_back = None
+        
+        calculator = DisputeMetricsCalculator()
+        filepath = calculator.export_metrics_report(days_back=days_back)
+        
+        return Response({
+            'message': 'Metrics report exported successfully',
+            'filepath': filepath
+        })
