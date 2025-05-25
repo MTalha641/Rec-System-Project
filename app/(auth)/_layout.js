@@ -3,7 +3,7 @@ import React from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {images} from '../../constants'
-import { AuthProvider } from '../context/AuthContext'
+ import { AuthProvider } from '../context/AuthContext'
 
 const Authlayout = () => {
   return (

@@ -1,6 +1,6 @@
 # users/urls.py
 from django.urls import path
-from .views import RegisterView, LoginView, get_user_details, SendOTPView, VerifyOTPView
+from .views import RegisterView, LoginView, get_user_details, SendOTPView, VerifyOTPView, test_otp_debug
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -10,4 +10,5 @@ urlpatterns = [
     path('getuserdetails/', get_user_details, name='user-detail'),
     path('send-otp/', SendOTPView.as_view(), name='send-otp'),
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('test-otp-debug/', test_otp_debug, name='test-otp-debug'),
 ]
