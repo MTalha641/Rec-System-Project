@@ -20,7 +20,7 @@ import MapView, { Marker } from "react-native-maps";
 import Review from "../../components/Reviews";
 import axios from "axios";
 import { API_URL } from "@env";
-import AuthContext from "../context/AuthContext";
+import {AuthContext} from "../../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -36,6 +36,8 @@ const ProductDetails = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [aiScore, setAiScore] = useState(null); // New state for AI score
 
+  const auth= useContext(AuthContext);
+  console.log("Auth context:", auth);
   const { token } = useContext(AuthContext);
 
   // Parse location string to get latitude and longitude
@@ -51,6 +53,13 @@ const ProductDetails = () => {
     const fetchProductDetails = async () => {
       if (!token) {
         console.warn("Token is missing, skipping fetch");
+        const localToken = await AsyncStorage.getItem("accessToken");
+        if (localToken) {
+          setToken(localToken);
+        } else {
+          Alert.alert("Error", "User not authenticated");
+          return;
+        }
         return;
       }
       try {

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { router } from 'expo-router';
@@ -33,7 +33,7 @@ import Recommended from '../../components/Recommended';
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
 import ShowCategories from '../../components/ShowCategories';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '../../context/AuthContext';
 import { API_URL } from '@env';
 
 const categories = [
@@ -59,48 +59,35 @@ const Home = () => {
   const [notificationCount, setNotificationCount] = useState(0);
 
   const fetchUnreadNotificationCount = async () => {
-    if (!token) {
-      console.warn('No token available for notification count!');
-      return;
-    }
+    if (!token) return;
 
     try {
       const response = await axios.get(`${API_URL}/api/notifications/count-unread/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response?.data) {
         setNotificationCount(response.data.unread_count);
       }
     } catch (error) {
-      console.error('Error fetching notification count:', error.response?.data || error.message);
+      console.error('Notification fetch error:', error.message);
     }
   };
 
   const fetchExploreItems = async () => {
-    if (!token) {
-      console.warn('No token available!');
-      return;
-    }
+    if (!token) return;
 
     setLoading(true);
-
     try {
       const response = await axios.get(`${API_URL}/api/items/excludemyitems/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response?.data) {
         setExploreItems(response.data);
-      } else {
-        console.warn('No data received from the API');
       }
     } catch (error) {
-      console.error('Error fetching explore items:', error.response?.data || error.message);
+      console.error('Explore items fetch error:', error.message);
     } finally {
       setLoading(false);
     }
@@ -123,94 +110,76 @@ const Home = () => {
     setRefreshing(false);
   };
 
+  const ListHeader = useMemo(() => (
+    <View className="my-6 px-4 space-y-6">
+      {/* Header Row */}
+      <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-row items-center gap-x-4 flex-1">
+          <View>
+            <Text className="font-pmedium text-sm text-gray-100">Welcome!</Text>
+            <Text className="text-2xl font-psemibold text-white" numberOfLines={1} ellipsizeMode="tail">
+              {user?.username || 'User'}
+            </Text>
+          </View>
+
+          <TouchableOpacity onPress={() => router.push('/notifications')} className="ml-1 mt-5 relative">
+            <Bell color="white" size={23} />
+            {notificationCount > 0 && (
+              <View
+                className="absolute -top-1 -right-1 bg-red-500 rounded-full items-center justify-center"
+                style={{ width: 16, height: 16 }}
+              >
+                <Text className="text-white text-[10px] font-bold">
+                  {notificationCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <Image
+          source={logo}
+          className="h-[65px]"
+          style={{ width: 100 }}
+          resizeMode="contain"
+        />
+      </View>
+
+      <Search />
+
+      <View className="w-full">
+        <Text className="text-lg font-pregular mb-1 text-white">Categories</Text>
+        <ShowCategories categories={categories} onSelectCategory={handleCategorySelect} />
+      </View>
+
+      <View className="w-full flex-1 pt-2 pb-4">
+        <Text className="text-lg font-pregular mb-3 text-white">Recommended Items</Text>
+        <Recommended />
+      </View>
+
+      <Text className="text-lg font-pregular mb-1 text-white">Explore Items</Text>
+    </View>
+  ), [user?.username, notificationCount]);
+
   return (
     <SafeAreaView className="bg-primary h-full">
       <FlatList
         data={exploreItems}
-        keyExtractor={(item) =>
-          item.productID
-            ? item.productID.toString()
-            : item.id?.toString() || item.title?.toString() || Math.random().toString()
-        }
+        keyExtractor={(item) => (item.productID || item.id)?.toString()}
         renderItem={({ item }) => (
           <View style={{ flex: 1 / 2, padding: 10 }}>
             <ProductCard product={item} />
           </View>
         )}
         numColumns={2}
-        contentContainerStyle={{
-          paddingHorizontal: 10,
-        }}
-        columnWrapperStyle={{
-          justifyContent: 'space-between',
-        }}
-        ListHeaderComponent={() => (
-          <View className="my-6 px-4 space-y-6">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-x-4 flex-1">
-                <View>
-                  <Text className="font-pmedium text-sm text-gray-100">Welcome!</Text>
-                  <Text
-                    className="text-2xl font-psemibold text-white"
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {user?.username || 'User'}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => router.push('/notifications')}
-                  className="ml-1 mt-5 relative"
-                >
-                  <Bell color="white" size={23} />
-                  {notificationCount > 0 && (
-                    <View
-                      className="absolute -top-1 -right-1 bg-red-500 rounded-full items-center justify-center"
-                      style={{ width: 16, height: 16 }}
-                    >
-                      <Text className="text-white text-[10px] font-bold">
-                        {notificationCount}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <Image
-                source={logo}
-                className="h-[65px]"
-                style={{ width: 100 }}
-                resizeMode="contain"
-              />
-            </View>
-
-            <Search />
-
-            <View className="w-full">
-              <Text className="text-lg font-pregular mb-1 text-white">Categories</Text>
-              <ShowCategories categories={categories} onSelectCategory={handleCategorySelect} />
-            </View>
-
-            <View className="w-full flex-1 pt-2 pb-4">
-              <Text className="text-lg font-pregular mb-3 text-white">Recommended Items</Text>
-              <Recommended />
-            </View>
-
-            <Text className="text-lg font-pregular mb-1 text-white">Explore Items</Text>
-          </View>
-        )}
-        ListEmptyComponent={() =>
-          !loading ? <EmptyState title="No Items Found" /> : null
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListFooterComponent={() =>
-          loading && (
-            <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 20 }} />
-          )
-        }
+        contentContainerStyle={{ paddingHorizontal: 10 }}
+        columnWrapperStyle={{ justifyContent: 'space-between' }}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={!loading ? () => <EmptyState title="No Items Found" /> : null}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListFooterComponent={loading ? () => (
+          <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 20 }} />
+        ) : null}
       />
     </SafeAreaView>
   );

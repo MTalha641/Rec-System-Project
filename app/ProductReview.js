@@ -15,7 +15,7 @@ import Modal from "react-native-modal";
 import CustomButton from "../components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
 import logo from "../assets/images/RLogo.png";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 import { API_URL } from "@env";
 import axios from "axios";
 import { useLocalSearchParams } from "expo-router";

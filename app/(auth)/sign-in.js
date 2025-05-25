@@ -8,7 +8,7 @@ import { Link, router } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from '@env';
-import { AuthContext } from "../../context/AuthContext"; // Import AuthContext
+import { AuthContext } from '../../context/AuthContext' // Import AuthContext
 
 const SignIn = () => {
   const [form, setForm] = useState({

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import axios from "axios";
 import { API_URL } from '@env';
-import { AuthContext } from "../app/context/AuthContext";
+import { AuthContext } from "../context/AuthContext";
 import ProductCard from "./ProductCard"; // Import your ProductCard component
 import * as Animatable from 'react-native-animatable';
 
@@ -108,4 +108,4 @@ const Recommended = () => {
   );
 };
 
-export default Recommended;
+export default React.memo(Recommended);

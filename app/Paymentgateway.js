@@ -7,7 +7,7 @@ import logo from "../assets/images/RLogo.png";
 import pathImage from "../assets/images/path.png";
 import { API_URL, STRIPE_PUBLISHABLE_KEY } from "@env";
 import axios from 'axios';
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 import { useLocalSearchParams } from 'expo-router';
 
 const STRIPE_KEY = STRIPE_PUBLISHABLE_KEY;

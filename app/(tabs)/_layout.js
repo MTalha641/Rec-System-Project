@@ -2,7 +2,7 @@ import { Text, View, Image } from "react-native";
 import React from "react";
 import { Tabs } from "expo-router";
 import { icons } from "../../constants";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider } from '../../context/AuthContext'
 
 const TabIcon = ({ icon, color, name, focused }) => {
   return (
@@ -42,7 +42,7 @@ const TabIcon = ({ icon, color, name, focused }) => {
 
 const Tabslayout = () => {
   return (
-    <AuthProvider>
+    
       <Tabs
         screenOptions={{
           tabBarShowLabel: false,
@@ -97,7 +97,7 @@ const Tabslayout = () => {
           }}
         />
       </Tabs>
-    </AuthProvider>
+    
   );
 };
 

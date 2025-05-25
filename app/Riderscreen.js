@@ -20,7 +20,7 @@ import Rlogo from "../assets/images/RLogo.png";
 import { router, useLocalSearchParams } from "expo-router";
 import axios from 'axios';
 import { API_URL } from "@env";
-import AuthContext from "./context/AuthContext";
+import {AuthContext} from "./../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
 const Riderscreen = () => {
