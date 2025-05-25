@@ -3,16 +3,16 @@ import React, { useState } from 'react'
 import  icon1 from '../assets/icons/eye.png'
 import  icon2 from '../assets/icons/eye-hide.png'
 
-const FormField = ({title, value, placeholder, handleChangeText, otherStyles, disabled, ...props}) => {
+const FormField = ({title, value, placeholder, handleChangeText, otherStyles, ...props}) => {
   
   const [showpw, setshowpw] = useState(false)
 
 
   return (
-    <View className={`my-3 ${otherStyles}`}>
+    <View className = "my-3 ">
       <Text className="text-base text-gray-100 font-pmedium">{title}</Text>
 
-      <View className={`w-full border-2 border-black-200 px-4 border-black-200 h-16 bg-black-100 rounded-2xl items-center focus:border-secondary flex-row ${disabled ? 'opacity-50' : ''}`}>
+      <View className="w-full border-2 border-black-200 px-4 border-black-200 h-16 bg-black-100 rounded-2xl items-center focus:border-secondary flex-row">
       <TextInput
       className="flex-1 text-white font-psemibold text-base"
       value={value}
@@ -22,14 +22,11 @@ const FormField = ({title, value, placeholder, handleChangeText, otherStyles, di
       secureTextEntry={
         title === 'Password' && !showpw
       }
-      editable={!disabled}
-      {...props}
       />
       
       {title === 'Password' && (
         <TouchableOpacity
         onPress={() => setshowpw(!showpw)}
-        disabled={disabled}
         >
         <Image
         source={!showpw ? icon1 : icon2}
@@ -48,4 +45,3 @@ const FormField = ({title, value, placeholder, handleChangeText, otherStyles, di
 }
 
 export default FormField
-
