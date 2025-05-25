@@ -1,82 +1,75 @@
-import React, { useEffect, useState, useContext } from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import React, { useEffect, useState , useContext} from "react";
+import { FlatList, Text, View, StyleSheet } from "react-native";
+import Ratings from "./Ratings";
 import axios from "axios";
 import { API_URL } from "@env";
 import { AuthContext } from "../context/AuthContext";
 
 const Reviews = ({ id }) => {
-  const [reviews, setReviews] = useState([]);
-  const { token } = useContext(AuthContext);
+  const { token } = useContext(AuthContext);// Get token from context
+  const [reviewData, setReviewData] = useState([]);
+  // console.log("Review component received id:", id);
 
   useEffect(() => {
     const fetchReviews = async () => {
-      if (!id) return;
+      if (!id) return; // Ensure id and token are available
 
       try {
-        const response = await axios.get(`${API_URL}/api/reviews/${id}/`, {
+        const response = await axios.get(`${API_URL}/api/reviews/getreview/${id}/`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`, // Add token in headers
           },
         });
-        setReviews(response.data);
+        console.log("here")
+        setReviewData(response.data);
+        console.log("Fetched Reviews for ID:", id, response.data);
+
+        console.log("component inside")
       } catch (error) {
-        console.error("Error fetching reviews:", error);
+        console.error("Error fetching reviews:", error.response?.data || error.message);
       }
     };
 
     fetchReviews();
-  }, [id, token]);
+  }, [id, token]); // Re-run when id or token changes
 
-  const renderReview = ({ item }) => (
+  const renderItem = ({ item }) => (
     <View style={styles.reviewContainer}>
-      <Text style={styles.reviewerName}>{item.user.username}</Text>
-      <Text style={styles.reviewText}>{item.comment}</Text>
-      <Text style={styles.reviewDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
+      <Ratings value={item.rating} />
+      <Text style={styles.commentText}>{item.review}</Text>
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Reviews</Text>
-      <FlatList
-        data={reviews}
-        renderItem={renderReview}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+  return reviewData.length > 0 ? (
+    <FlatList
+      data={reviewData}
+      renderItem={renderItem}
+      horizontal
+      keyExtractor={(item, index) => index.toString()}
+      showsHorizontalScrollIndicator={false}
+    />
+  ) : (
+    <Text style={styles.noReviewsText}>No Reviews</Text>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
-  },
   reviewContainer: {
-    backgroundColor: "#f5f5f5",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: "#1E1E2D",
+    padding: 10,
+    maxWidth: 300,
+    marginRight: 10,
+    borderRadius: 10,
+    marginBottom: 20,
   },
-  reviewerName: {
+  commentText: {
+    marginTop: 5,
+    color: "white",
+  },
+  noReviewsText: {
+    alignSelf: "center",
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  reviewText: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 8,
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: "#666",
+    color: "white",
   },
 });
 

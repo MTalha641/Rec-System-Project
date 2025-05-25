@@ -202,38 +202,24 @@ const SignUp = () => {
       if (response.status === 200) {
         console.log("OTP verification response:", response.data);
         
-        // Auto-login after successful verification
-        if (response.data.access && response.data.refresh) {
-          await login(response.data);
-          Alert.alert(
-            "Success!",
-            "Email verified successfully! You are now logged in.",
-            [
-              {
-                text: "Continue",
-                onPress: () => {
-                  // Redirect based on user type
-                  if (response.data.user?.user_type === "Vendor") {
-                    router.push("/vendorhome");
-                  } else {
-                    router.push("/home");
-                  }
-                }
+        // After successful verification, redirect to sign-in screen
+        Alert.alert(
+          "Success!",
+          "Email verified successfully! Please sign in to your account.",
+          [
+            {
+              text: "Sign In",
+              onPress: () => {
+                // Clear the OTP screen and redirect to sign-in
+                setShowOTPScreen(false);
+                setOtp("");
+                setRegisteredEmail("");
+                setOtpTimer(300);
+                router.push("/sign-in");
               }
-            ]
-          );
-        } else {
-          Alert.alert(
-            "Success!",
-            "Email verified successfully! Please sign in to your account.",
-            [
-              {
-                text: "Sign In",
-                onPress: () => router.push("/sign-in")
-              }
-            ]
-          );
-        }
+            }
+          ]
+        );
       } else {
         Alert.alert("Error", "Invalid OTP. Please try again.");
       }

@@ -17,60 +17,130 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated access
     
     def post(self, request):
+        print("=== REGISTRATION DEBUG ===")
+        print("Request data:", request.data)
+        
+        # Check for required fields
+        required_fields = ['username', 'email', 'password']
+        missing_fields = [field for field in required_fields if not request.data.get(field)]
+        
+        if missing_fields:
+            print(f"Missing required fields: {missing_fields}")
+            return Response({
+                "error": f"Missing required fields: {', '.join(missing_fields)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if email already exists
+        email = request.data.get('email')
+        if User.objects.filter(email=email).exists():
+            print(f"Email already exists: {email}")
+            return Response({
+                "error": "A user with this email already exists."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if username already exists
+        username = request.data.get('username')
+        if User.objects.filter(username=username).exists():
+            print(f"Username already exists: {username}")
+            return Response({
+                "error": "A user with this username already exists."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = UserSerializer(data=request.data)
+        print("Serializer created with data:", request.data)
+        
         if serializer.is_valid():
+            print("Serializer is valid, creating user...")
             user = serializer.save()
+            print(f"User created: {user.username} (ID: {user.id})")
             
-            # New users need OTP verification (existing users have bypass_otp=True by default)
-            user.bypass_otp = False
-            user.email_verified = False
-            user.save()
+            try:
+                # New users need OTP verification (existing users have bypass_otp=True by default)
+                user.bypass_otp = False
+                user.email_verified = False
+                user.save()
+                print("User OTP settings updated")
+                
+                # Generate and send OTP for new users
+                user.otp_secret = generate_otp_secret()
+                otp = generate_totp(user.otp_secret)
+                user.otp_created_at = timezone.now()
+                user.save()
+                print(f"OTP generated and saved: {otp}")
+                
+                # Try to send OTP email
+                email_sent = send_otp_email(user.email, otp)
+                print(f"Email sent status: {email_sent}")
+                
+                return Response({
+                    "message": "Registration successful. Please verify your email with the OTP sent.",
+                    "user_id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "userType": user.userType,
+                    "interests": user.interests,
+                    "requires_otp": True,
+                    "otp": otp,  # Always include OTP for debugging
+                    "email_sent": email_sent,
+                }, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                print(f"Error during OTP setup: {str(e)}")
+                # If OTP setup fails, still return success but without OTP requirement
+                return Response({
+                    "message": "User created successfully",
+                    "user_id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "userType": user.userType,
+                    "interests": user.interests,
+                    "requires_otp": False,
+                }, status=status.HTTP_201_CREATED)
+                
+        else:
+            print("Serializer validation failed!")
+            print("Serializer errors:", serializer.errors)
             
-            # Generate and send OTP for new users
-            user.otp_secret = generate_otp_secret()
-            otp = generate_totp(user.otp_secret)
-            user.otp_created_at = timezone.now()
-            user.save()
-            
-            # Try to send OTP email
-            email_sent = send_otp_email(user.email, otp)
+            # Provide more user-friendly error messages
+            error_messages = []
+            for field, errors in serializer.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
             
             return Response({
-                "message": "Registration successful. Please verify your email with the OTP sent.",
-                "user_id": user.id,
-                "email": user.email,
-                "requires_otp": True,
-                "otp": otp,  # Always include OTP for debugging
-                "email_sent": email_sent,
-            }, status=status.HTTP_201_CREATED)
-            
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                "error": "Validation failed",
+                "details": error_messages,
+                "serializer_errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated access
-    
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
-            user = authenticate(email=email, password=password)
-            
-            if user:
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')  
+        password = request.data.get('password')  
+
+        if not email or not password:
+            return Response({"error": "Email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email) 
+           
+            if user.check_password(password):
                 # Check if user can bypass OTP (existing users) or is already verified
                 if user.bypass_otp or user.email_verified:
+                    # Generate JWT tokens
                     refresh = RefreshToken.for_user(user)
+
+                    # Return tokens and user information
                     return Response({
+                        "message": "Login successful",
+                        "username": user.username,
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
-                        "user": {
-                            "id": user.id,
-                            "email": user.email,
-                            "username": user.username,
-                            "user_type": user.userType,
-                            "interests": user.interests,
-                        }
-                    })
+                        "user_type": user.userType,  # Include user type in the response
+                        "email": user.email
+                    }, status=status.HTTP_200_OK)
                 else:
                     # User needs to verify OTP first
                     return Response({
@@ -79,9 +149,14 @@ class LoginView(APIView):
                         "email": user.email,
                         "requires_otp": True
                     }, status=status.HTTP_403_FORBIDDEN)
-                    
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    "error": "Invalid credentials"
+                }, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({
+                "error": "Invalid credentials"
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
 # OTP ENDPOINTS
 class SendOTPView(APIView):
@@ -204,13 +279,17 @@ def get_user_details(request):
         serializer = UserSerializer(user)
         print("Serialized data:", serializer.data)
         
-        return Response(serializer.data)
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "userType": user.userType,
+            "interests": user.interests,
+            "full_name": user.get_full_name() or user.username,
+        })
     except Exception as e:
         print("Error in get_user_details:", str(e))
-        return Response(
-            {"error": "Failed to fetch user details"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
