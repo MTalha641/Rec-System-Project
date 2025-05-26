@@ -108,4 +108,4 @@ const Recommended = () => {
   );
 };
 
-export default React.memo(Recommended);
+export default Recommended;

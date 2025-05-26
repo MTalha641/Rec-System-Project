@@ -2,100 +2,80 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from recommendations.hybrid import hybrid_recommendation_system
-from django.utils import timezone # Import timezone
-from datetime import timedelta # Import timedelta
+from django.utils import timezone
 from .models import Recommendation # Import your Recommendation model
+from items.models import SearchHistory # Import your SearchHistory model
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_recommendations(request):
+    user_id = request.user.id
+
     try:
-        user_id = request.user.id
-        
-        # Define the cache duration (3 days)
-        CACHE_DURATION_DAYS = 3
-        
-        # 1. Check for existing, fresh recommendations in the database
+        # --- Step 1: Get current user's search history snapshot ---
+        # Define how you want to represent the search history for comparison.
+        # This example uses a sorted list of unique queries.
+        # You might need a more sophisticated method depending on your data.
+        current_search_queries = SearchHistory.objects.filter(user=request.user) \
+                                                    .order_by('-timestamp') \
+                                                    .values_list('search_query', flat=True)[:50] # Limit for performance
+        current_search_history = sorted(list(set(current_search_queries))) # Unique and sorted for consistency
+
+
+        # --- Step 2: Check for existing, matching recommendations in the database ---
+        latest_recommendation = None
         try:
-            # Get the most recent recommendation for the user
             latest_recommendation = Recommendation.objects.filter(user_id=user_id).latest('created_at')
-            
-            # Check if the recommendation is still fresh (within CACHE_DURATION_DAYS)
-            time_difference = timezone.now() - latest_recommendation.created_at
-            
-            if time_difference.days < CACHE_DURATION_DAYS:
-                # Recommendations are fresh, return cached data
-                print(f"Returning cached recommendations for user {user_id}")
+
+            # Compare the stored snapshot with the current snapshot
+            # JSONField values are automatically converted to Python objects (list/dict),
+            # so direct comparison should work if content is structured similarly.
+            if latest_recommendation.cached_search_history == current_search_history:
+                # Recommendations are fresh based on search history, return cached data
+                print(f"Returning cached recommendations for user {user_id} (search history matched).")
                 return Response({
                     'success': True,
                     'recommendations': latest_recommendation.recommended_items,
-                    'message': 'Recommendations retrieved from cache.'
+                    'message': 'Recommendations retrieved from cache based on search history.'
                 })
+            else:
+                print(f"Cached recommendations for user {user_id} are stale (search history changed). Generating new ones.")
+
         except Recommendation.DoesNotExist:
-            # No previous recommendation for this user, proceed to generate
-            print(f"No cached recommendations found for user {user_id}. Generating new ones.")
-            pass # Continue to generate recommendations
+            print(f"No previous recommendation found for user {user_id}. Generating new ones.")
+            pass # No existing recommendation, proceed to generate
         except Exception as e:
             # Log any other errors during cache lookup, but proceed to generate
-            print(f"Error during cache lookup for user {user_id}: {e}. Generating new recommendations.")
-            pass
-            
-        # 2. If no fresh cached recommendations, generate new ones
+            print(f"Error during cache lookup/comparison for user {user_id}: {e}. Generating new recommendations.")
+            pass # Continue to generate recommendations
+
+
+        # --- Step 3: If no fresh cached recommendations, generate new ones ---
         print(f"Generating new recommendations for user {user_id}...")
         recommendations_df = hybrid_recommendation_system(user_id)
 
         if recommendations_df.empty:
             message = 'No recommendations available for this user.'
-            
-            # Store empty recommendations and explicitly update 'created_at'
-            # This ensures that even if no recommendations are found, the timestamp is updated
-            # to mark when this "empty" state was last computed.
-            Recommendation.objects.update_or_create(
-                user_id=user_id,
-                defaults={
-                    'recommended_items': [],
-                    'algorithm_used': 'Hybrid',
-                    'created_at': timezone.now() # <--- Crucial change: Manually set created_at
-                }
-            )
-            
-            return Response({
-                'success': True,
-                'recommendations': [],
-                'message': message
-            })
+            data = [] # Explicitly set to empty list for storing
+            print(f"No recommendations generated for user {user_id}. Storing empty set.")
+        else:
+            data = recommendations_df.to_dict('records')
+            print(f"Recommendations generated for user {user_id}.")
 
-        data = recommendations_df.to_dict('records')
-
-        # 3. Store the newly generated recommendations in the database (cache)
-        # Use update_or_create to either update an existing entry or create a new one.
-        # Explicitly setting 'created_at' to timezone.now() will ensure it gets updated
-        # when an existing record is found and modified.
+        # --- Step 4: Store the newly generated recommendations and the current search history snapshot ---
         Recommendation.objects.update_or_create(
             user_id=user_id,
             defaults={
                 'recommended_items': data,
                 'algorithm_used': 'Hybrid',
-                'created_at': timezone.now() # <--- Crucial change: Manually set created_at
+                'cached_search_history': current_search_history, # Store the new snapshot
+                'created_at': timezone.now() # Update timestamp to reflect when this set was computed
             }
         )
-        print(f"New recommendations generated and cached for user {user_id}.")
+        print(f"New recommendations and search history snapshot cached for user {user_id}.")
 
-        return Response({'success': True, 'recommendations': data})
+        return Response({'success': True, 'recommendations': data, 'message': 'New recommendations generated.'})
 
     except Exception as e:
         print(f"An unexpected error occurred in get_recommendations view: {e}")
         return Response({'success': False, 'error': str(e)}, status=500)
-
-# Your Recommendation model remains as you defined it
-# from django.db import models
-# from users.models import User
-# # Create your models here.
-# class Recommendation(models.Model):
-#     user = models.ForeignKey(User, related_name='recommendations', on_delete=models.CASCADE)
-#     recommended_items = models.JSONField()  # Store recommended item IDs or details
-#     algorithm_used = models.CharField(max_length=50)  # e.g., 'Content-Based', 'Collaborative'
-#     created_at = models.DateTimeField(auto_now_add=True) # auto_now_add is fine, but we'll override it on update
-
-#     def __str__(self):
-#         return f"Recommendation for {self.user.username}"
