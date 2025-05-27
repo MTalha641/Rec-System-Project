@@ -38,6 +38,12 @@ class Dispute(models.Model):
     ai_analysis = models.TextField(blank=True)
     admin_notes = models.TextField(blank=True)
     
+    # New fields for CLIP image analysis
+    clip_analysis = models.JSONField(blank=True, null=True)
+    image_similarity_score = models.FloatField(default=0.0)
+    damage_progression_score = models.FloatField(default=0.0)
+    combined_confidence_score = models.FloatField(default=0.0)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

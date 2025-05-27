@@ -20,7 +20,11 @@ class DisputeSerializer(serializers.ModelSerializer):
             'ai_analysis', 
             'admin_notes', 
             'checkout_report', 
-            'return_report'
+            'return_report',
+            'clip_analysis',
+            'image_similarity_score',
+            'damage_progression_score',
+            'combined_confidence_score'
         ]
 
     def create(self, validated_data):

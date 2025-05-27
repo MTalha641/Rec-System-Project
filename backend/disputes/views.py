@@ -2,8 +2,12 @@
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import JsonResponse
+import json
+import numpy as np
 from .models import Dispute
 from .serializers import DisputeSerializer, DisputeCreateSerializer, DisputeResolveSerializer
 from items.models import Item
@@ -12,6 +16,19 @@ from .ai_service import analyze_dispute
 from bookings.models import Booking
 from condition_reports.models import ItemConditionReport
 from django.utils import timezone
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder for numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        return super(NumpyEncoder, self).default(obj)
 
 class DisputeListView(generics.ListAPIView):
     serializer_class = DisputeSerializer
@@ -80,8 +97,12 @@ class CreateDisputeView(generics.CreateAPIView):
         self.process_dispute_with_ai(dispute)
 
     def process_dispute_with_ai(self, dispute):
-        # Call AI service to analyze the dispute
+        # OPTION 1: Use existing text-only analysis (default)
         result = analyze_dispute(dispute.checkout_report, dispute.return_report, dispute.description)
+        
+        # OPTION 2: Use enhanced analysis with images (uncomment to enable)
+        # from .enhanced_ai_service import analyze_dispute_with_images
+        # result = analyze_dispute_with_images(dispute)
 
         # Update dispute with AI analysis results
         dispute.ai_analysis = result.get('analysis', '')
@@ -89,12 +110,20 @@ class CreateDisputeView(generics.CreateAPIView):
         dispute.ai_at_fault = result.get('at_fault', 'none')
         dispute.ai_confidence_score = result.get('confidence_score', 0.0)
         
+        # Update new CLIP analysis fields if available
+        if 'image_analysis' in result:
+            dispute.clip_analysis = result['image_analysis']
+            dispute.image_similarity_score = result.get('image_similarity', 0.0)
+            dispute.damage_progression_score = result.get('damage_progression_score', 0.0)
+            dispute.combined_confidence_score = result.get('combined_confidence', 0.0)
+        
         # Set legacy fields for backward compatibility
         dispute.outcome = dispute.ai_outcome
         dispute.at_fault = dispute.ai_at_fault
         
         # Auto-resolve high-confidence cases
-        if dispute.ai_confidence_score > 0.8:
+        confidence_score = result.get('combined_confidence', result.get('confidence_score', 0.0))
+        if confidence_score > 0.8:
             dispute.status = 'resolved'
         else:
             dispute.status = 'pending'  # Requires admin review
@@ -185,3 +214,107 @@ class ExportMetricsView(APIView):
             'message': 'Metrics report exported successfully',
             'filepath': filepath
         })
+
+# Test endpoints for CLIP analysis
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def test_clip_analysis(request, booking_id):
+    """Test endpoint for CLIP image analysis"""
+    try:
+        from .clip_image_service import clip_service
+        
+        # Analyze condition change for the booking
+        result = clip_service.analyze_condition_change(booking_id)
+        
+        response_data = {
+            'success': True,
+            'booking_id': booking_id,
+            'analysis_result': result
+        }
+        
+        return JsonResponse(response_data, encoder=NumpyEncoder)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def test_enhanced_dispute_analysis(request):
+    """Test endpoint for enhanced dispute analysis"""
+    try:
+        dispute_id = request.data.get('dispute_id')
+        if not dispute_id:
+            return JsonResponse({'error': 'dispute_id required'}, status=400)
+        
+        dispute = get_object_or_404(Dispute, id=dispute_id)
+        
+        from .enhanced_ai_service import analyze_dispute_with_images
+        result = analyze_dispute_with_images(dispute)
+        
+        response_data = {
+            'success': True,
+            'dispute_id': dispute_id,
+            'analysis_result': result
+        }
+        
+        return JsonResponse(response_data, encoder=NumpyEncoder)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def enable_enhanced_analysis(request, dispute_id):
+    """Enable enhanced analysis for a specific dispute"""
+    try:
+        dispute = get_object_or_404(Dispute, id=dispute_id)
+        
+        # Check permissions
+        user = request.user
+        if not (user.is_staff or user.id == dispute.filed_by.id):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        from .enhanced_ai_service import analyze_dispute_with_images
+        result = analyze_dispute_with_images(dispute)
+        
+        # Update dispute with enhanced analysis
+        dispute.ai_analysis = result.get('analysis', '')
+        dispute.outcome = result.get('outcome', 'none')
+        dispute.at_fault = result.get('at_fault', 'none')
+        
+        if 'image_analysis' in result:
+            dispute.clip_analysis = result['image_analysis']
+            dispute.image_similarity_score = result.get('image_similarity', 0.0)
+            dispute.damage_progression_score = result.get('damage_progression_score', 0.0)
+            dispute.combined_confidence_score = result.get('combined_confidence', 0.0)
+        
+        # Update status based on confidence
+        confidence_score = result.get('combined_confidence', result.get('confidence_score', 0.0))
+        if confidence_score > 0.8:
+            dispute.status = 'resolved'
+        else:
+            dispute.status = 'pending'
+        
+        dispute.save()
+        
+        response_data = {
+            'success': True,
+            'dispute_id': dispute_id,
+            'updated_status': dispute.status,
+            'confidence_score': float(confidence_score),
+            'analysis_result': result
+        }
+        
+        return JsonResponse(response_data, encoder=NumpyEncoder)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
