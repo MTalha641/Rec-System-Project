@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react'; // Import useRef
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { router } from 'expo-router';
@@ -29,7 +29,7 @@ import {
 
 import logo from '../../assets/images/RLogo.png';
 import Search from '../../components/Search';
-import Recommended from '../../components/Recommended';
+import Recommended from '../../components/Recommended'; // Assuming this component exists
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
 import ShowCategories from '../../components/ShowCategories';
@@ -57,6 +57,8 @@ const Home = () => {
   const [exploreItems, setExploreItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  // NEW STATE: A counter to trigger Recommended component refresh
+  const [recommendationsRefreshKey, setRecommendationsRefreshKey] = useState(0);
 
   const fetchUnreadNotificationCount = async () => {
     if (!token) return;
@@ -97,6 +99,8 @@ const Home = () => {
     if (token) {
       fetchExploreItems();
       fetchUnreadNotificationCount();
+      // On initial load, also trigger recommendations fetch
+      setRecommendationsRefreshKey(prevKey => prevKey + 1);
     }
   }, [token]);
 
@@ -106,7 +110,12 @@ const Home = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchExploreItems(), fetchUnreadNotificationCount()]);
+    await Promise.all([
+      fetchExploreItems(),
+      fetchUnreadNotificationCount(),
+      // NEW: Increment key to trigger Recommended component refresh
+      setRecommendationsRefreshKey(prevKey => prevKey + 1)
+    ]);
     setRefreshing(false);
   };
 
@@ -154,12 +163,13 @@ const Home = () => {
 
       <View className="w-full flex-1 pt-2 pb-4">
         <Text className="text-lg font-pregular mb-3 text-white">Recommended Items</Text>
-        <Recommended />
+        {/* NEW: Pass the recommendationsRefreshKey to Recommended */}
+        <Recommended key={recommendationsRefreshKey} />
       </View>
 
       <Text className="text-lg font-pregular mb-1 text-white">Explore Items</Text>
     </View>
-  ), [user?.username, notificationCount]);
+  ), [user?.username, notificationCount, recommendationsRefreshKey]); // Add recommendationsRefreshKey to useMemo dependencies
 
   return (
     <SafeAreaView className="bg-primary h-full">

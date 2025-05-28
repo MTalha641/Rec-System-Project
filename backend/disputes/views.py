@@ -79,27 +79,64 @@ class CreateDisputeView(generics.CreateAPIView):
         # Trigger AI analysis
         self.process_dispute_with_ai(dispute)
 
+    
     def process_dispute_with_ai(self, dispute):
-        # Call AI service to analyze the dispute
+    # Call AI service to analyze the dispute
         result = analyze_dispute(dispute.checkout_report, dispute.return_report, dispute.description)
 
-        # Update dispute with AI analysis results
+    # Update dispute with AI analysis results
         dispute.ai_analysis = result.get('analysis', '')
         dispute.ai_outcome = result.get('outcome', 'none')
         dispute.ai_at_fault = result.get('at_fault', 'none')
         dispute.ai_confidence_score = result.get('confidence_score', 0.0)
-        
-        # Set legacy fields for backward compatibility
+    
+    # Store additional analysis metrics for debugging/review
+        dispute.total_evidence_score = result.get('total_evidence_score', 0.0)
+        dispute.context_difference = result.get('context_difference', 0.0)
+    
+    # Set legacy fields for backward compatibility
         dispute.outcome = dispute.ai_outcome
         dispute.at_fault = dispute.ai_at_fault
-        
-        # Auto-resolve high-confidence cases
-        if dispute.ai_confidence_score > 0.8:
+    
+    # Enhanced auto-resolution logic based on AI service thresholds
+        confidence_score = dispute.ai_confidence_score
+        total_evidence = result.get('total_evidence_score', 0.0)
+        outcome = dispute.ai_outcome
+    
+    # Auto-resolve cases with high confidence AND clear outcomes
+        if confidence_score >= 0.8 and outcome in ['valid', 'invalid']:
             dispute.status = 'resolved'
+            dispute.resolution_method = 'auto_ai_high_confidence'
+    
+    # Auto-resolve very strong evidence cases even with moderate confidence
+        elif confidence_score >= 0.6 and total_evidence > 0.5 and outcome == 'valid':
+            dispute.status = 'resolved'
+            dispute.resolution_method = 'auto_ai_strong_evidence'
+    
+    # Auto-resolve very weak evidence cases with decent confidence
+        elif confidence_score >= 0.6 and total_evidence < 0.3 and outcome == 'invalid':
+            dispute.status = 'resolved'
+            dispute.resolution_method = 'auto_ai_weak_evidence'
+    
+    # All other cases require manual review
         else:
-            dispute.status = 'pending'  # Requires admin review
-            
+            dispute.status = 'pending'
+            dispute.resolution_method = 'manual_review_required'
+        
+        # Add specific reason for manual review
+            if confidence_score < 0.6:
+                dispute.review_reason = 'low_confidence'
+            elif 0.3 <= total_evidence <= 0.5:
+                dispute.review_reason = 'moderate_evidence_ambiguous'
+            else:
+                dispute.review_reason = 'complex_case'
         dispute.save()
+    
+    # Log the decision for monitoring
+        print(f"Dispute {dispute.id}: {outcome} (confidence: {confidence_score:.2f}, "
+          f"evidence: {total_evidence:.2f}) -> {dispute.status}")
+    
+        return result
 
 class ResolveDisputeView(generics.UpdateAPIView):
     serializer_class = DisputeResolveSerializer

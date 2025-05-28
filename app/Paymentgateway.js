@@ -440,6 +440,7 @@ const StripePaymentGateway = () => {
     try {
       setLoading(true);
       const paymentIntentData = await fetchPaymentIntentClientSecret();
+      console.log("Payment Intent Data:", paymentIntentData.clientSecret);
       
       if (!paymentIntentData || !paymentIntentData.clientSecret) {
         setLoading(false);
