@@ -227,8 +227,9 @@ The hybrid system provides:
 
 ## 👥 Group Members
 
-Muhammad Talha 21K-3288
-Syed Ismail 21K-4571
+- Muhammad Talha 21K-3288
+- Syed Ismail 21K-4571
+- Saeed Saleem 21K-4847
 
 ---
 
