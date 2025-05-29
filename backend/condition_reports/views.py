@@ -5,7 +5,7 @@ from .serializers import ItemConditionReportSerializer
 class ItemConditionReportListCreateView(generics.ListCreateAPIView):
     queryset = ItemConditionReport.objects.all()
     serializer_class = ItemConditionReportSerializer
-    permission_classes = [permissions.IsAuthenticated]  # Only authenticated users can access
+    permission_classes = [permissions.IsAuthenticated]  
 
     def get_queryset(self):
         """Optionally filter by booking."""
@@ -22,4 +22,4 @@ class ItemConditionReportListCreateView(generics.ListCreateAPIView):
 class ItemConditionReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ItemConditionReport.objects.all()
     serializer_class = ItemConditionReportSerializer
-    permission_classes = [permissions.IsAuthenticated] # Only authenticated users can access
+    permission_classes = [permissions.IsAuthenticated] 

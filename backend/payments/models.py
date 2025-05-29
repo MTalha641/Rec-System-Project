@@ -5,7 +5,6 @@ from django.dispatch import receiver
 from users.models import User
 from bookings.models import Booking
 
-# Payment Status Options
 PAYMENT_STATUS = (
     ('pending', 'Pending'),
     ('completed', 'Completed'),
@@ -14,7 +13,6 @@ PAYMENT_STATUS = (
     ('cancelled', 'Cancelled'),
 )
 
-# Payment methods
 PAYMENT_METHODS = (
     ('credit_card', 'Credit Card'),
     ('cash_on_delivery', 'Cash on Delivery'),
@@ -39,10 +37,8 @@ class Payment(models.Model):
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='pending')
     payment_method = models.CharField(max_length=50, choices=PAYMENT_METHODS)
     
-    # Fields for credit card payments
     stripe_payment_id = models.CharField(max_length=100, blank=True, null=True)
     
-    # Fields for cash on delivery
     address = models.TextField(blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     
@@ -57,7 +53,6 @@ class Payment(models.Model):
         verbose_name = 'Payment'
         verbose_name_plural = 'Payments'
 
-# Signal to handle approval of booking when payment is marked as completed
 @receiver(post_save, sender=Payment)
 def update_booking_on_payment_complete(sender, instance, **kwargs):
     """
@@ -65,7 +60,6 @@ def update_booking_on_payment_complete(sender, instance, **kwargs):
     This replaces the webhook functionality.
     """
     if instance.status == 'completed' and instance.booking:
-        # Update the booking status to approved
         booking = instance.booking
         booking.status = 'approved'
         booking.save(update_fields=['status']) 

@@ -5,16 +5,15 @@ from users.models import User
 class Item(models.Model):
     rentee = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=255)
-    price = models.IntegerField()  # Changed to IntegerField
-    location = models.CharField(max_length=255) #pinpoint co-ordinates
-    address = models.CharField(max_length=255,default='') # street and detailed string address
+    price = models.IntegerField() 
+    location = models.CharField(max_length=255) 
+    address = models.CharField(max_length=255,default='') 
     category = models.CharField(max_length=255)
     sub_category = models.CharField(max_length=255)
     image = models.ImageField(upload_to="items/")
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     temporary_field1 = models.BooleanField(default=True)
-    # is_rented = models.BooleanField(default=False) 
 
     def __str__(self):
         return self.title
@@ -22,8 +21,8 @@ class Item(models.Model):
 
 class SearchHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, null=True, blank=True)  # Allow null for logging generic searches
-    search_query = models.CharField(max_length=255, null=True, blank=True)  # Store raw search queries
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, null=True, blank=True) 
+    search_query = models.CharField(max_length=255, null=True, blank=True)  
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

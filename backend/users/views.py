@@ -20,7 +20,6 @@ class RegisterView(APIView):
         print("=== REGISTRATION DEBUG ===")
         print("Request data:", request.data)
         
-        # Check for required fields
         required_fields = ['username', 'email', 'password']
         missing_fields = [field for field in required_fields if not request.data.get(field)]
         
@@ -30,7 +29,6 @@ class RegisterView(APIView):
                 "error": f"Missing required fields: {', '.join(missing_fields)}"
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if email already exists
         email = request.data.get('email')
         if User.objects.filter(email=email).exists():
             print(f"Email already exists: {email}")
@@ -38,7 +36,6 @@ class RegisterView(APIView):
                 "error": "A user with this email already exists."
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if username already exists
         username = request.data.get('username')
         if User.objects.filter(username=username).exists():
             print(f"Username already exists: {username}")
@@ -55,20 +52,17 @@ class RegisterView(APIView):
             print(f"User created: {user.username} (ID: {user.id})")
             
             try:
-                # New users need OTP verification (existing users have bypass_otp=True by default)
                 user.bypass_otp = False
                 user.email_verified = False
                 user.save()
                 print("User OTP settings updated")
                 
-                # Generate and send OTP for new users
                 user.otp_secret = generate_otp_secret()
                 otp = generate_totp(user.otp_secret)
                 user.otp_created_at = timezone.now()
                 user.save()
                 print(f"OTP generated and saved: {otp}")
                 
-                # Try to send OTP email
                 email_sent = send_otp_email(user.email, otp)
                 print(f"Email sent status: {email_sent}")
                 
@@ -86,7 +80,6 @@ class RegisterView(APIView):
                 
             except Exception as e:
                 print(f"Error during OTP setup: {str(e)}")
-                # If OTP setup fails, still return success but without OTP requirement
                 return Response({
                     "message": "User created successfully",
                     "user_id": user.id,
@@ -101,7 +94,6 @@ class RegisterView(APIView):
             print("Serializer validation failed!")
             print("Serializer errors:", serializer.errors)
             
-            # Provide more user-friendly error messages
             error_messages = []
             for field, errors in serializer.errors.items():
                 for error in errors:
@@ -127,12 +119,9 @@ class LoginView(APIView):
             user = User.objects.get(email=email) 
            
             if user.check_password(password):
-                # Check if user can bypass OTP (existing users) or is already verified
                 if user.bypass_otp or user.email_verified:
-                    # Generate JWT tokens
                     refresh = RefreshToken.for_user(user)
 
-                    # Return tokens and user information
                     return Response({
                         "message": "Login successful",
                         "username": user.username,
@@ -142,7 +131,6 @@ class LoginView(APIView):
                         "email": user.email
                     }, status=status.HTTP_200_OK)
                 else:
-                    # User needs to verify OTP first
                     return Response({
                         "message": "Please verify your email with OTP before logging in.",
                         "user_id": user.id,
@@ -158,7 +146,6 @@ class LoginView(APIView):
                 "error": "Invalid credentials"
             }, status=status.HTTP_401_UNAUTHORIZED)
 
-# OTP ENDPOINTS
 class SendOTPView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated access
     
@@ -168,13 +155,11 @@ class SendOTPView(APIView):
             return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Use filter().first() to handle potential duplicates, get the most recent user
             user = User.objects.filter(email=email).order_by('-date_joined').first()
             
             if not user:
                 return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
             
-            # Generate new OTP
             if not user.otp_secret:
                 user.otp_secret = generate_otp_secret()
             
@@ -182,7 +167,6 @@ class SendOTPView(APIView):
             user.otp_created_at = timezone.now()
             user.save()
             
-            # Send OTP email
             email_sent = send_otp_email(user.email, otp)
             
             if email_sent:
@@ -197,7 +181,6 @@ class VerifyOTPView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated access
     
     def post(self, request):
-        # Debug logging
         print("=== OTP VERIFICATION DEBUG ===")
         print("Request data:", request.data)
         
@@ -214,7 +197,6 @@ class VerifyOTPView(APIView):
             return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Use filter().first() to handle potential duplicates, get the most recent user
             user = User.objects.filter(email=email).order_by('-date_joined').first()
             
             if not user:
@@ -225,12 +207,10 @@ class VerifyOTPView(APIView):
             print(f"User OTP secret: {user.otp_secret}")
             print(f"User OTP created at: {user.otp_created_at}")
             
-            # Check if OTP is expired (5 minutes)
             if user.otp_created_at and timezone.now() - user.otp_created_at > timedelta(minutes=5):
                 print("ERROR: OTP has expired")
                 return Response({"error": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Verify OTP
             print(f"Verifying OTP: secret='{user.otp_secret}', token='{otp}'")
             otp_valid = verify_totp(user.otp_secret, otp)
             print(f"OTP verification result: {otp_valid}")
@@ -243,7 +223,6 @@ class VerifyOTPView(APIView):
                 
                 print("SUCCESS: OTP verified, user updated")
                 
-                # Generate tokens for login after verification
                 refresh = RefreshToken.for_user(user)
                 return Response({
                     "message": "Email verified successfully",
@@ -301,15 +280,12 @@ def test_otp_debug(request):
         return Response({"error": "Email required for testing"}, status=400)
     
     try:
-        # Find user
         user = User.objects.filter(email=email).order_by('-date_joined').first()
         if not user:
             return Response({"error": "User not found"}, status=404)
         
-        # Test OTP flow
         test_results = test_otp_flow()
         
-        # Get user's current OTP info
         user_info = {
             'user_id': user.id,
             'username': user.username,
@@ -320,7 +296,6 @@ def test_otp_debug(request):
             'bypass_otp': user.bypass_otp
         }
         
-        # Generate current OTP for user if they have a secret
         current_user_otp = None
         if user.otp_secret:
             current_user_otp = generate_totp(user.otp_secret)

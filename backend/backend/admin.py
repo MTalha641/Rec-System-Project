@@ -2,12 +2,12 @@ from django.contrib import admin
 from django.contrib.admin import AdminSite
 from django.utils.translation import gettext_lazy as _
 
-# Customize the admin site
+
 admin.site.site_header = _("RentSpot Admin Panel")
 admin.site.site_title = _("RentSpot Admin")
 admin.site.index_title = _("Welcome to RentSpot Administration")
 
-# Add custom CSS and JavaScript if needed
+
 class RentSpotAdminSite(AdminSite):
     site_header = "RentSpot Admin Panel"
     site_title = "RentSpot Admin"
@@ -24,7 +24,3 @@ class RentSpotAdminSite(AdminSite):
             'has_permission': request.user.is_active and request.user.is_staff,
         })
         return context
-
-# You can uncomment the following lines if you want to use a custom admin site
-# admin_site = RentSpotAdminSite(name='rentspot_admin')
-# admin.site = admin_site 

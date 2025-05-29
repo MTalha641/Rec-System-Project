@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from .models import ItemConditionReport
-from users.serializers import UserSerializer  # Assuming you have a UserSerializer
-from users.models import User  # Import the User model
-from bookings.serializers import BookingSerializer  # Assuming you have a BookingSerializer
-from bookings.models import Booking  # Import the Booking model
+from users.serializers import UserSerializer  
+from users.models import User  
+from bookings.serializers import BookingSerializer
+from bookings.models import Booking  
 
 class ItemConditionReportSerializer(serializers.ModelSerializer):
     booking = BookingSerializer(read_only=True)

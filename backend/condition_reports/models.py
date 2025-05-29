@@ -19,11 +19,8 @@ class ItemConditionReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Potential fields for images (less flexible)
     checkout_image = models.ImageField(upload_to='condition_reports/', blank=True, null=True)
     return_image = models.ImageField(upload_to='condition_reports/', blank=True, null=True)
-
-    # Potential fields for specific damages (very inflexible and limited)
     checkout_damage_location = models.CharField(max_length=100, blank=True)
     checkout_damage_description = models.TextField(blank=True)
     return_damage_location = models.CharField(max_length=100, blank=True)

@@ -16,11 +16,9 @@ from bookings.models import Booking
 
 User = get_user_model()
 
-# Load Stripe API key from environment variable
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
-# New REST API endpoints
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def payment_list(request):
@@ -41,7 +39,6 @@ def payment_detail(request, pk):
     try:
         payment = Payment.objects.get(pk=pk)
         
-        # Check if user is authorized to view this payment
         if payment.user != request.user:
             return Response(
                 {"error": "You are not authorized to view this payment"}, 
@@ -56,11 +53,9 @@ def payment_detail(request, pk):
             status=status.HTTP_404_NOT_FOUND
         )
 
-# Manual payment status update endpoint (replaces webhook functionality)
-# Convert to DRF view for proper authentication handling
-@api_view(['POST']) # Use api_view decorator and specify POST method
-@permission_classes([IsAuthenticated]) # Ensure user is authenticated via DRF
-@csrf_exempt # Keep csrf_exempt if needed, though often handled by DRF auth
+@api_view(['POST'])
+@permission_classes([IsAuthenticated]) 
+@csrf_exempt 
 def update_payment_status(request):
     """Update payment status"""
     try:
@@ -74,17 +69,14 @@ def update_payment_status(request):
             )
             
         try:
-            # Use .select_related('user') for efficiency if needed
             payment = Payment.objects.get(id=payment_id) 
             
-            # request.user should now be correctly populated by DRF
             if payment.user != request.user:
                 return Response(
                     {"error": "You are not authorized to update this payment"}, 
                     status=status.HTTP_403_FORBIDDEN
                 )
                 
-            # Validate status value against choices if necessary
             valid_statuses = [status[0] for status in PAYMENT_STATUS]
             if status_value not in valid_statuses:
                  return Response(
@@ -93,11 +85,9 @@ def update_payment_status(request):
                  )
 
             payment.status = status_value
-            # Use update_fields for efficiency, especially with signals
             payment.save(update_fields=['status', 'updated_at']) 
             
-            # Consider returning the serialized payment object
-            serializer = PaymentSerializer(payment) # Or PaymentDetailSerializer
+            serializer = PaymentSerializer(payment)
             return Response({
                 "success": True,
                 "message": f"Payment status updated to {status_value}",
@@ -111,34 +101,29 @@ def update_payment_status(request):
             )
             
     except Exception as e:
-        # Log the exception for debugging on the server
         print(f"Error in update_payment_status: {e}") 
-        # Consider more specific error handling
         return Response(
-            {"error": "An internal server error occurred."}, # Avoid exposing internal details
+            {"error": "An internal server error occurred."}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-# Existing Stripe integration
 @csrf_exempt
 def create_checkout_session(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            amount = data.get('amount', 1000)  # Default to 10.00 if not provided
+            amount = data.get('amount', 1000)  
             product_name = data.get('product_name', 'Rental Payment')
             customer_email = data.get('email', None)
             user_id = data.get('user_id', None)
             booking_id = data.get('booking_id', None)
             
-            # Create metadata for tracking the transaction
             metadata = {
                 'product_id': data.get('product_id', ''),
                 'booking_id': booking_id or '',
                 'user_id': user_id or '',
             }
             
-            # Define frontend URL from environment variable or fallback
             frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8000')
             
             checkout_params = {
@@ -146,9 +131,9 @@ def create_checkout_session(request):
                 "line_items": [
                     {
                         "price_data": {
-                            "currency": "AED",  # Pakistani Rupees
+                            "currency": "AED",  
                             "product_data": {"name": product_name},
-                            "unit_amount": amount,  # Amount in cents
+                            "unit_amount": amount,  
                         },
                         "quantity": 1,
                     },
@@ -159,17 +144,14 @@ def create_checkout_session(request):
                 "metadata": metadata,
             }
             
-            # Add customer email if provided
             if customer_email:
                 checkout_params["customer_email"] = customer_email
                 
             session = stripe.checkout.Session.create(**checkout_params)
             
-            # Create Payment record in database
             if user_id:
                 try:
                     user = User.objects.get(id=user_id)
-                    # Convert amount from smallest unit (paisa) to PKR
                     payment_amount = amount / 100
                     
                     payment = Payment.objects.create(
@@ -186,8 +168,6 @@ def create_checkout_session(request):
                             booking = Booking.objects.get(id=booking_id)
                             payment.booking = booking
                             
-                            # Update booking status to approved directly
-                            # (since we're not using webhooks for status updates)
                             booking.status = 'approved'
                             booking.save()
                             
@@ -220,17 +200,14 @@ def create_payment_intent(request):
     """Create a PaymentIntent for credit card payments"""
     try:
         data = request.data
-        # Log the received data for debugging
         print(f"Payment Intent Request Data: {data}")
         
-        # Extract required fields with better error handling
         amount = data.get('amount')
         currency = data.get('currency', 'aed')
         email = data.get('email')
         user_id = data.get('user_id')
         booking_id = data.get('booking_id')
         
-        # Check for missing or invalid fields
         missing_fields = []
         if not amount:
             missing_fields.append("amount")
@@ -249,7 +226,6 @@ def create_payment_intent(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Convert to appropriate types if needed
         try:
             amount = int(amount)
         except (ValueError, TypeError):
@@ -272,7 +248,6 @@ def create_payment_intent(request):
             'email': email,
         }
         
-        # Create a PaymentIntent with the amount and currency
         intent = stripe.PaymentIntent.create(
             amount=amount,
             currency=currency,
@@ -281,12 +256,11 @@ def create_payment_intent(request):
                 'enabled': True,
             },
         )
-        print(intent.client_secret)  # Log client secret for debugging
+        print(intent.client_secret)  
         
-        # Create Payment record in database
         try:
             user = User.objects.get(id=user_id)
-            payment_amount = amount / 100  # Convert to main currency unit
+            payment_amount = amount / 100  
             
             payment = Payment.objects.create(
                 user=user,
@@ -334,22 +308,18 @@ def create_cash_payment(request):
     serializer = PaymentCreateSerializer(data=request.data)
     
     if serializer.is_valid():
-        # Make sure the user is only creating payments for themselves
         if str(serializer.validated_data['user'].id) != str(request.user.id):
             return Response(
                 {"error": "You can only create payments for yourself"}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Create the payment
         payment = serializer.save(status='pending')
         
-        # Update booking status if present
         if payment.booking:
             payment.booking.status = 'approved'
             payment.booking.save()
         
-        # Return the created payment
         return Response(
             PaymentDetailSerializer(payment).data, 
             status=status.HTTP_201_CREATED
@@ -357,7 +327,6 @@ def create_cash_payment(request):
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Legacy method for non-DRF approach
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_cash_payment_legacy(request):
@@ -391,7 +360,6 @@ def create_cash_payment_legacy(request):
                 phone_number=phone_number
             )
             
-            # Update booking status
             booking.status = 'approved'
             booking.save()
             

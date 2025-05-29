@@ -24,8 +24,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
         Create a new notification.
         Only admin users or the system should typically create notifications.
         """
-        # Set the recipient from the request data
-        # Add additional validation if needed
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

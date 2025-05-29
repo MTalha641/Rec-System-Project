@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Item, SearchHistory, SavedItem
 
 class ItemSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False)  # Use ImageField for handling images
+    image = serializers.ImageField(required=False)  
 
     class Meta:
         model = Item
@@ -14,7 +14,7 @@ class ItemSerializer(serializers.ModelSerializer):
             "location",
             "category",
             "sub_category",
-            "image",  # Full URL for image
+            "image",  
             "description",
             "created_at",
         ]

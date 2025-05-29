@@ -3,8 +3,6 @@ from users.models import User
 from items.models import Item
 from django.utils.timezone import now
 
-# bookings/models.py
-
 class Booking(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),

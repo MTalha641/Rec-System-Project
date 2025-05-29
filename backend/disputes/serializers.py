@@ -1,4 +1,3 @@
-# disputes/serializers.py
 from rest_framework import serializers
 from .models import Dispute
 from items.serializers import ItemSerializer
@@ -35,7 +34,6 @@ class DisputeCreateSerializer(serializers.ModelSerializer):
         fields = ['description', 'evidence']
 
     def validate(self, data):
-        # Add any custom validation logic here if needed
         return data
 
 
@@ -48,6 +46,6 @@ class DisputeResolveSerializer(serializers.ModelSerializer):
         instance.outcome = validated_data.get('outcome', instance.outcome)
         instance.at_fault = validated_data.get('at_fault', instance.at_fault)
         instance.admin_notes = validated_data.get('admin_notes', instance.admin_notes)
-        instance.status = 'resolved'  # Automatically set status to resolved
+        instance.status = 'resolved' 
         instance.save()
         return instance

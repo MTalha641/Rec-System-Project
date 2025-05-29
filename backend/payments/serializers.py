@@ -45,11 +45,9 @@ class PaymentCreateSerializer(serializers.ModelSerializer):
         """
         Validate payment data
         """
-        # Ensure amount is positive
         if data.get('amount', 0) <= 0:
             raise serializers.ValidationError("Payment amount must be greater than zero")
             
-        # Validate payment method
         payment_method = data.get('payment_method')
         if payment_method == 'cash' and not data.get('delivery_address'):
             raise serializers.ValidationError("Delivery address is required for cash payments")

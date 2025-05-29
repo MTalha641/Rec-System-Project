@@ -5,16 +5,13 @@ from django.utils import timezone
 from datetime import timedelta
 from django.core.mail import send_mail
 
-# Generate a secret key for the user
 def generate_otp_secret():
     return pyotp.random_base32()
 
-# Generate a time-based OTP
 def generate_totp(secret):
     totp = pyotp.TOTP(secret)
     return totp.now()
 
-# Verify a time-based OTP
 def verify_totp(secret, token):
     print(f"=== OTP VERIFICATION UTILITY DEBUG ===")
     print(f"Secret: '{secret}'")
@@ -32,26 +29,20 @@ def verify_totp(secret, token):
     try:
         totp = pyotp.TOTP(secret)
         
-        # Generate current valid OTP for comparison
         current_otp = totp.now()
         print(f"Current valid OTP: '{current_otp}'")
         
-        # Convert token to string if it's not already
         token_str = str(token).strip()
         print(f"Token as string: '{token_str}'")
         
-        # Try verification with current time window
         result = totp.verify(token_str)
         print(f"Current window verification result: {result}")
         
-        # If current window fails, try with clock drift tolerance (±1 window = ±30 seconds)
         if not result:
             print("Trying with clock drift tolerance...")
-            # Check previous window (30 seconds ago)
             result = totp.verify(token_str, valid_window=1)
             print(f"With tolerance verification result: {result}")
         
-        # Additional debugging: show what OTPs would be valid in adjacent windows
         if not result:
             import time
             current_time = int(time.time())
@@ -69,7 +60,6 @@ def verify_totp(secret, token):
         traceback.print_exc()
         return False
 
-# Send OTP email
 def send_otp_email(email, otp):
     subject = 'Your RentSpot OTP Code'
     message = f'''
@@ -99,28 +89,22 @@ This is an automated message, please do not reply to this email.
         print(f"Error sending email: {str(e)}")
         return False
 
-# Test function for debugging OTP issues
 def test_otp_flow():
     """Test OTP generation and verification for debugging"""
     print("=== OTP FLOW TEST ===")
     
-    # Generate a test secret
     secret = generate_otp_secret()
     print(f"Generated secret: {secret}")
     
-    # Generate OTP
     otp = generate_totp(secret)
     print(f"Generated OTP: {otp}")
     
-    # Test immediate verification
     result1 = verify_totp(secret, otp)
     print(f"Immediate verification: {result1}")
     
-    # Test with string conversion
     result2 = verify_totp(secret, str(otp))
     print(f"String verification: {result2}")
     
-    # Test with wrong OTP
     result3 = verify_totp(secret, "123456")
     print(f"Wrong OTP verification: {result3}")
     

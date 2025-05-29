@@ -3,16 +3,12 @@ from .models import Dispute
 
 @admin.register(Dispute)
 class DisputeAdmin(admin.ModelAdmin):
-    # Fields to display in the admin list view
     list_display = ('id', 'rental', 'filed_by', 'status', 'outcome', 'at_fault', 'created_at', 'updated_at')
     
-    # Fields to filter by
     list_filter = ('status', 'outcome', 'at_fault', 'created_at', 'updated_at', 'rental__category')
     
-    # Fields to search by
     search_fields = ('filed_by__username', 'rental__title', 'description', 'admin_notes')
     
-    # Fields to display in the detail view
     fieldsets = (
         ('Basic Information', {
             'fields': ('rental', 'filed_by', 'description', 'evidence')
@@ -29,19 +25,14 @@ class DisputeAdmin(admin.ModelAdmin):
         }),
     )
     
-    # Read-only fields
     readonly_fields = ('created_at', 'updated_at')
     
-    # Ordering
     ordering = ('-created_at',)
     
-    # Items per page
     list_per_page = 25
     
-    # Enable date hierarchy
     date_hierarchy = 'created_at'
     
-    # Add actions for bulk status updates
     actions = ['mark_as_processing', 'mark_as_resolved', 'mark_outcome_valid', 'mark_outcome_invalid']
     
     def mark_as_processing(self, request, queryset):

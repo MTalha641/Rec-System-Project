@@ -33,7 +33,6 @@ class ItemViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             raise NotAuthenticated("User must be authenticated.")
         
-        # Filter out items where rentee_id matches the logged-in user's ID
         queryset = self.get_queryset().exclude(rentee_id=request.user.id)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -47,10 +46,8 @@ class ItemViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             raise NotAuthenticated("User must be authenticated.")
         
-        # Filter items where rentee matches the logged-in user
         queryset = self.get_queryset().filter(rentee=request.user)
         
-        # Prefetch related bookings for each item
         from django.db.models import Prefetch
         from bookings.models import Booking
         
@@ -62,18 +59,15 @@ class ItemViewSet(viewsets.ModelViewSet):
             )
         )
         
-        # Debug info
         print(f"User ID: {request.user.id}")
         print(f"Found {items_with_bookings.count()} items for user {request.user.username}")
         
-        # Serialize the items
         serializer = self.get_serializer(items_with_bookings, many=True)
         
-        # Enhance the serialized data with booking information
         data = serializer.data
         for i, item in enumerate(items_with_bookings):
             if hasattr(item, 'latest_bookings') and item.latest_bookings:
-                latest_booking = item.latest_bookings[0]  # Get the most recent booking
+                latest_booking = item.latest_bookings[0]  
                 data[i]['latest_booking'] = {
                     'id': latest_booking.id,
                     'status': latest_booking.status,
@@ -105,7 +99,6 @@ class ItemViewSet(viewsets.ModelViewSet):
       
         print(f"Authenticated User ID: {request.user.id}")
         
-        # Ensure the logged-in user is set as the rentee
         request.data['rentee'] = request.user.id
         
         serializer = ItemSerializer(data=request.data)
@@ -137,7 +130,6 @@ class ItemViewSet(viewsets.ModelViewSet):
         Custom behavior for creating an item.
         Associates the 'rentee' field with the currently logged-in user.
         """
-        # Automatically save the item with the logged-in user as the rentee
         serializer.save(rentee=self.request.user)
 
     @action(detail=False, methods=['get'], url_path='search')
@@ -145,27 +137,23 @@ class ItemViewSet(viewsets.ModelViewSet):
         """
         Search for items and log the search query along with the logged-in user's ID.
         """
-        query = request.query_params.get('q', '').strip()  # Get the search query
+        query = request.query_params.get('q', '').strip()  
         if not query:
             return Response({"detail": "Search query is required."}, status=status.HTTP_400_BAD_REQUEST)
     
-        # Search items
         items = Item.objects.filter(
             Q(title__icontains=query) |
             Q(description__icontains=query)
         )
     
-        # Serialize the results
         serializer = ItemSerializer(items, many=True)
   
-        # Attempt to find the most relevant item for the search query
         relevant_item = items.first() if items.exists() else None
   
-        # Log the search query in the SearchHistory model
         search_entry = SearchHistory.objects.create(
             user=request.user,
-            item=relevant_item,  # Associate the first relevant item, if found
-            search_query=query  # Always store the raw query
+            item=relevant_item,  
+            search_query=query  
         )
         search_entry.save()
   
@@ -192,7 +180,6 @@ class SavedItemViewSet(viewsets.ModelViewSet):
         """
         Save an item for the current user.
         """
-        # Ensure the item exists
         try:
             item_id = request.data.get('item')
             item = Item.objects.get(id=item_id)
@@ -202,7 +189,6 @@ class SavedItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Check if already saved
         existing = SavedItem.objects.filter(user=request.user, item=item).first()
         if existing:
             return Response(
@@ -210,7 +196,6 @@ class SavedItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
         
-        # Create new saved item
         saved_item = SavedItem.objects.create(user=request.user, item=item)
         serializer = self.get_serializer(saved_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -222,7 +207,6 @@ class SavedItemViewSet(viewsets.ModelViewSet):
         """
         print(f"Unsave request received for item ID: {pk}, User: {request.user.username}")
         try:
-            # First check if the item exists
             try:
                 item = Item.objects.get(id=pk)
                 print(f"Item found: {item.title}")
@@ -233,7 +217,6 @@ class SavedItemViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Then check if the item is saved by the user
             try:
                 saved_item = SavedItem.objects.get(user=request.user, item_id=pk)
                 print(f"SavedItem found for {request.user.username} and item {pk}")
@@ -276,18 +259,15 @@ class SavedItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Check if already saved
         saved = SavedItem.objects.filter(user=request.user, item=item).first()
         
         if saved:
-            # If exists, remove it
             saved.delete()
             return Response(
                 {"saved": False, "message": "Item removed from saved items"}, 
                 status=status.HTTP_200_OK
             )
         else:
-            # If not exists, save it
             SavedItem.objects.create(user=request.user, item=item)
             return Response(
                 {"saved": True, "message": "Item saved successfully"}, 
