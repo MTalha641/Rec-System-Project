@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-This project implements a sophisticated **Hybrid Recommendation System** that combines both **Content-Based Filtering** and **Collaborative Filtering** techniques to provide personalized product recommendations. The system is built using Django REST Framework for the backend and React Native for the frontend.
+This project implements a sophisticated **Hybrid Recommendation System** that combines both **Content-Based Filtering** and **Collaborative Filtering** techniques to provide personalized product recommendations. The system is built using Django REST Framework for the backend and React Native for the frontend. 
 
 ## 🚀 Key Features
 
@@ -223,18 +223,12 @@ The hybrid system provides:
 - **Personalization**: Adapts to individual user preferences
 - **Scalability**: Efficient for large datasets
 
-## 🔮 Future Enhancements
 
-- Deep learning models for advanced pattern recognition
-- Real-time recommendation updates
-- A/B testing framework for algorithm optimization
-- Multi-criteria recommendation support
-- Social recommendation features
 
-## 👥 Contributors
+## 👥 Group Members
 
-This recommendation system was developed as part of a semester project, implementing state-of-the-art recommendation techniques for enhanced user experience.
+Muhammad Talha 21K-3288
+Syed Ismail 21K-4571
 
 ---
 
-**Note**: The complete recommendation system with all latest features is now available in the `main` branch. The system includes a comprehensive hybrid algorithm that combines content-based and collaborative filtering for optimal personalized recommendations. 
