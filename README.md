@@ -43,11 +43,10 @@ Rec-System-Project/
 
 ### Backend Setup
 
-1. **Clone the repository and switch to the latest branch:**
+1. **Clone the repository:**
    ```bash
    git clone <repository-url>
    cd Rec-System-Project
-   git checkout test1  # 🌟 Latest code is in test1 branch
    ```
 
 2. **Navigate to backend directory:**
@@ -183,17 +182,12 @@ The React Native component handles:
 
 ### 📂 **To explore the recommendation system:**
 
-1. **Switch to the latest branch:**
-   ```bash
-   git checkout test1
-   ```
-
-2. **Navigate to the recommendations folder:**
+1. **Navigate to the recommendations folder:**
    ```bash
    cd backend/recommendations/
    ```
 
-3. **Key files to examine:**
+2. **Key files to examine:**
    - `hybrid.py` - Main recommendation algorithm
    - `sampleTest.py` - Testing and validation
    - `views.py` - API endpoints
@@ -243,4 +237,4 @@ This recommendation system was developed as part of a semester project, implemen
 
 ---
 
-**Note**: The latest and most up-to-date code is available in the `test1` branch. Make sure to checkout this branch to access the most recent implementation of the recommendation system. 
+**Note**: The complete recommendation system with all latest features is now available in the `main` branch. The system includes a comprehensive hybrid algorithm that combines content-based and collaborative filtering for optimal personalized recommendations. 
